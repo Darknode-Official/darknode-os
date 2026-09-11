@@ -13,6 +13,8 @@ typedef struct {
     int focused;
     int dragging;
     int drag_ox, drag_oy;
+    int resizing;
+    int resize_edge; /* bit flags: 1=left 2=right 4=top 8=bottom */
     void (*draw_content)(int win_id, int cx, int cy, int cw, int ch);
     char textbuf[4096];
     int text_len;

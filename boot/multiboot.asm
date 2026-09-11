@@ -13,8 +13,8 @@ mb2_start:
     dw 5        ; type = framebuffer
     dw 0        ; flags (not optional)
     dd 20       ; size of this tag
-    dd 1024     ; preferred width
-    dd 768      ; preferred height
+    dd 1280     ; preferred width
+    dd 960      ; preferred height
     dd 32       ; preferred bpp
 
     ; end tag

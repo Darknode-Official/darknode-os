@@ -9,8 +9,8 @@ static uint16_t iobase = 0;
 static uint8_t  mac_addr[6];
 static uint8_t  irq_num = 0;
 static volatile int rx_ready = 0;
-static uint8_t  rx_buf[NE_MAX_PACKET];
-static uint16_t rx_len = 0;
+static uint8_t  __attribute__((unused)) rx_buf[NE_MAX_PACKET];
+static uint16_t __attribute__((unused)) rx_len = 0;
 
 static void ne_write(uint8_t reg, uint8_t val) { outb(iobase + reg, val); }
 static uint8_t ne_read(uint8_t reg) { return inb(iobase + reg); }
