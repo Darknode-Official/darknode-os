@@ -28,6 +28,10 @@ static const char scancode_shift[128] = {
 
 static void keyboard_callback(registers_t *regs) {
     (void)regs;
+    /* Check if data is actually from keyboard (bit 5 clear) not mouse (bit 5 set) */
+    uint8_t status = inb(0x64);
+    if (status & 0x20) return;  /* mouse data — leave it for the mouse driver */
+
     uint8_t sc = inb(0x60);
 
     if (sc == 0x2A || sc == 0x36) { shift_pressed = true; return; }
@@ -44,6 +48,14 @@ static void keyboard_callback(registers_t *regs) {
     }
 }
 
+void keyboard_push_char(char c) {
+    int next = (kb_head + 1) % KB_BUF_SIZE;
+    if (next != kb_tail) {
+        kb_buf[kb_head] = c;
+        kb_head = next;
+    }
+}
+
 void keyboard_init(void) {
     register_interrupt_handler(33, keyboard_callback);
 }
@@ -53,7 +65,7 @@ bool keyboard_has_key(void) {
 }
 
 char keyboard_getchar(void) {
-    while (!keyboard_has_key()) __asm__ volatile("hlt");
+    if (!keyboard_has_key()) return 0;
     char c = kb_buf[kb_tail];
     kb_tail = (kb_tail + 1) % KB_BUF_SIZE;
     return c;

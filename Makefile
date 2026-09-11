@@ -22,8 +22,10 @@ C_SRCS   = kernel/kernel.c kernel/console.c kernel/string.c kernel/gdt.c \
            kernel/idt.c kernel/timer.c kernel/keyboard.c kernel/pmm.c \
            kernel/heap.c kernel/serial.c kernel/shell.c \
            kernel/process.c kernel/syscall.c \
-           kernel/framebuffer.c kernel/gui.c \
+           kernel/framebuffer.c kernel/gui.c kernel/theme.c \
            drivers/rtc.c drivers/pci.c drivers/ata.c drivers/ne2000.c drivers/mouse.c \
+           drivers/usb.c drivers/usb_hid.c drivers/ahci.c \
+           drivers/acpi.c drivers/rtl8139.c drivers/vbox.c \
            fs/vfs.c fs/ramfs.c fs/devfs.c \
            net/ethernet.c net/arp.c net/ipv4.c net/icmp.c \
            net/udp.c net/dhcp.c net/dns.c

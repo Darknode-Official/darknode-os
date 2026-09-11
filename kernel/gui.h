@@ -2,7 +2,7 @@
 #define GUI_H
 #include "../include/types.h"
 
-#define MAX_WINDOWS 16
+#define MAX_WINDOWS 32
 #define TASKBAR_HEIGHT 32
 #define TITLEBAR_HEIGHT 24
 
