@@ -36,6 +36,8 @@ static const char *menu_labels[MENU_COUNT] = {
     "Hash Tools",    "Settings",      "About Darknode"
 };
 static int cascade_off = 0;
+static int minimalist_mode = 1;
+static int settings_tab = 0;
 
 /* cursor bitmap (1 = white, 2 = black outline) */
 static const uint8_t cursor_bmp[CURSOR_H][CURSOR_W] = {
@@ -59,7 +61,7 @@ static const uint8_t cursor_bmp[CURSOR_H][CURSOR_W] = {
 
 /* ── helpers ── */
 
-static void int_to_str(uint32_t v, char *buf, int len) {
+static void __attribute__((unused)) int_to_str(uint32_t v, char *buf, int len) {
     int i = len - 1;
     buf[i--] = '\0';
     if (v == 0) { buf[i] = '0'; while (i > 0) buf[--i] = ' '; return; }
@@ -155,9 +157,13 @@ static const char *icon_labels[ICON_COUNT] = {
 static const int icon_app_map[ICON_COUNT] = { 0, 1, 3, 7, 10, 11 };
 static const char icon_glyphs[ICON_COUNT] = { '>', 'F', 'W', 'N', 'S', '?' };
 
+static int tb_h(void) { return minimalist_mode ? 32 : 38; }
+static int title_h(void) { return minimalist_mode ? 24 : 28; }
+static int border_w(void) { return minimalist_mode ? 1 : 2; }
+
 static void draw_desktop(void) {
     int sw = fb_width(), sh = fb_height();
-    fb_fill_rect(0, 0, sw, sh - TASKBAR_HEIGHT, T_BG);
+    fb_fill_rect(0, 0, sw, sh - tb_h(), T_BG);
 
     /* top bar — subtle, like a panel */
     fb_fill_rect(0, 0, sw, 22, T_PANEL);
@@ -172,7 +178,7 @@ static void draw_desktop(void) {
     /* desktop icons — left side, vertical column */
     int ix = 16;
     int iy = 40;
-    for (int i = 0; i < ICON_COUNT && iy + ICON_H < sh - TASKBAR_HEIGHT - 10; i++) {
+    for (int i = 0; i < ICON_COUNT && iy + ICON_H < sh - tb_h() - 10; i++) {
         /* icon box */
         fb_fill_rect(ix + 16, iy, 40, 32, T_PANEL_HI);
         fb_draw_rect(ix + 16, iy, 40, 32, T_DIM);
@@ -186,11 +192,22 @@ static void draw_desktop(void) {
 
 static void draw_taskbar(void) {
     int sw = fb_width(), sh = fb_height();
-    int ty = sh - TASKBAR_HEIGHT;
-    fb_fill_rect(0, ty, sw, TASKBAR_HEIGHT, T_PANEL);
+    int th = tb_h();
+    int ty = sh - th;
+    fb_fill_rect(0, ty, sw, th, T_PANEL);
     fb_draw_rect(0, ty, sw, 1, T_ACCENT);
-    fb_fill_rect(4, ty + 4, 40, TASKBAR_HEIGHT - 8, T_ACCENT);
-    fb_text(10, ty + 10, "DN", T_BG);
+
+    int btn_h = th - 8;
+    int btn_y = ty + 4;
+    int text_y = ty + (th - 16) / 2;
+
+    /* DN button */
+    fb_fill_rect(4, btn_y, 40, btn_h, T_ACCENT);
+    if (!minimalist_mode) {
+        fb_draw_line(4, btn_y, 44, btn_y, T_TEXT); /* top highlight */
+        fb_draw_line(4, btn_y + btn_h - 1, 44, btn_y + btn_h - 1, T_DIM); /* bottom shadow */
+    }
+    fb_text(10, text_y, "DN", T_BG);
 
     int bx = 52;
     for (int i = 0; i < order_count; i++) {
@@ -201,29 +218,60 @@ static void draw_taskbar(void) {
         if (tw > 140) tw = 140;
         uint32_t bg = w->focused ? T_ACCENT : T_PANEL_HI;
         uint32_t fg = w->focused ? T_BG : T_TEXT;
-        fb_fill_rect(bx, ty + 4, tw, TASKBAR_HEIGHT - 8, bg);
-        fb_text(bx + 8, ty + 10, w->title, fg);
+        fb_fill_rect(bx, btn_y, tw, btn_h, bg);
+        if (!minimalist_mode) {
+            fb_draw_line(bx, btn_y, bx + tw, btn_y, w->focused ? T_TEXT : T_MUTED);
+            fb_draw_line(bx, btn_y + btn_h - 1, bx + tw, btn_y + btn_h - 1, T_DIM);
+        }
+        fb_text(bx + 8, text_y, w->title, fg);
         bx += tw + 4;
     }
 
     char clk[16]; uptime_str(clk);
-    fb_text(sw - 80, ty + 10, clk, T_TEXT);
+    fb_text(sw - 80, text_y, clk, T_TEXT);
 }
 
 static void draw_window(int id) {
     gui_window_t *w = &windows[id];
     if (!w->visible) return;
-    uint32_t border_color = w->focused ? T_ACCENT : T_DIM;
-    fb_draw_rect(w->x, w->y, w->w, w->h, border_color);
+    int th = title_h();
+    int brd = border_w();
+    uint32_t bcol = w->focused ? T_ACCENT : T_DIM;
+
+    if (minimalist_mode) {
+        fb_draw_rect(w->x, w->y, w->w, w->h, bcol);
+    } else {
+        fb_draw_rect(w->x, w->y, w->w, w->h, bcol);
+        fb_draw_rect(w->x + 1, w->y + 1, w->w - 2, w->h - 2, T_PANEL_HI);
+    }
+
     uint32_t title_bg = w->focused ? T_PANEL_HI : T_PANEL;
-    fb_fill_rect(w->x + 1, w->y + 1, w->w - 2, TITLEBAR_HEIGHT, title_bg);
-    fb_text(w->x + 8, w->y + 6, w->title, T_TEXT);
-    int cx = w->x + w->w - 22, cy = w->y + 4;
-    fb_fill_rect(cx, cy, 18, 16, T_ERR);
-    fb_glyph(cx + 5, cy + 2, 'X', T_TEXT);
-    int bx = w->x + 1, by = w->y + TITLEBAR_HEIGHT + 1;
-    int bw = w->w - 2, bh = w->h - TITLEBAR_HEIGHT - 2;
+    fb_fill_rect(w->x + brd, w->y + brd, w->w - brd * 2, th, title_bg);
+
+    if (minimalist_mode) {
+        fb_text(w->x + 8, w->y + (th - 16) / 2 + brd, w->title, T_TEXT);
+    } else {
+        int tw = (int)strlen(w->title) * 8;
+        fb_text(w->x + (w->w - tw) / 2, w->y + (th - 16) / 2 + brd, w->title, T_TEXT);
+    }
+
+    /* Close button */
+    int close_sz = minimalist_mode ? 16 : 18;
+    int cx = w->x + w->w - close_sz - 6, cy = w->y + brd + (th - close_sz) / 2;
+    fb_fill_rect(cx, cy, close_sz, close_sz, T_ERR);
+    if (!minimalist_mode) fb_draw_rect(cx, cy, close_sz, close_sz, T_PANEL_HI);
+    fb_glyph(cx + (close_sz - 8) / 2, cy + (close_sz - 16) / 2, 'X', T_TEXT);
+
+    /* Body */
+    int bx = w->x + brd, by = w->y + th + brd;
+    int bw = w->w - brd * 2, bh = w->h - th - brd * 2;
     fb_fill_rect(bx, by, bw, bh, T_BODY);
+
+    /* Resize grip — bottom right corner */
+    int gx = w->x + w->w - 12, gy = w->y + w->h - 12;
+    for (int i = 0; i < 3; i++) {
+        fb_fill_rect(gx + i * 4, gy + 8 - i * 4, 2, 2 + i * 4, T_DIM);
+    }
     if (w->draw_content) {
         w->draw_content(id, bx + 4, by + 4, bw - 8, bh - 8);
     } else if (w->text_len > 0) {
@@ -254,7 +302,7 @@ static void draw_start_menu(void) {
     int mx = mouse_get_x(), my = mouse_get_y();
     int menu_x = 4;
     int menu_h = MENU_COUNT * MENU_ITEM_H + 8;
-    int menu_y = sh - TASKBAR_HEIGHT - menu_h;
+    int menu_y = sh - tb_h() - menu_h;
 
     fb_fill_rect(menu_x, menu_y, MENU_W, menu_h, T_PANEL);
     fb_draw_rect(menu_x, menu_y, MENU_W, menu_h, T_ACCENT);
@@ -269,7 +317,7 @@ static void draw_start_menu(void) {
 
 /* ── content callbacks for app windows ── */
 
-static void draw_sysinfo(int wid, int cx, int cy, int cw, int ch) {
+static void __attribute__((unused)) draw_sysinfo(int wid, int cx, int cy, int cw, int ch) {
     (void)wid; (void)cw; (void)ch;
     char buf[32]; int y = cy;
     fb_text(cx, y, "Darknode OS v0.1.0", T_ACCENT); y += 16;
@@ -448,10 +496,6 @@ static void draw_calculator(int wid, int cx, int cy, int cw, int ch) {
     }
 }
 
-/* Settings state */
-static int settings_tab = 0;
-static int minimalist_mode = 1; /* on by default — sharp corners */
-
 static void draw_toggle(int x, int y, int on) {
     /* Toggle switch: 36x16 */
     uint32_t track = on ? T_ACCENT : T_DIM;
@@ -463,7 +507,42 @@ static void draw_toggle(int x, int y, int on) {
 
 static void draw_setting_row(int x, int y, int w, const char *label, const char *value) {
     fb_text(x, y, label, T_MUTED);
-    fb_text(x + w - (int)strlen(value) * 8 - 8, y, value, T_TEXT);
+    int vx = x + 130;
+    int max_chars = (w - 138) / 8;
+    if (max_chars < 1) max_chars = 1;
+    /* Truncate value if it doesn't fit */
+    char vbuf[64];
+    int vlen = (int)strlen(value);
+    if (vlen > max_chars && max_chars < 63) {
+        for (int i = 0; i < max_chars - 2 && i < 61; i++) vbuf[i] = value[i];
+        vbuf[max_chars - 2] = '.'; vbuf[max_chars - 1] = '.'; vbuf[max_chars] = '\0';
+        fb_text(vx, y, vbuf, T_TEXT);
+    } else {
+        fb_text(vx, y, value, T_TEXT);
+    }
+}
+
+static void draw_slider(int x, int y, int w, int pct) {
+    /* Track */
+    fb_fill_rect(x, y + 2, w, 6, T_DIM);
+    /* Filled portion */
+    int fill = (w * pct) / 100;
+    if (fill > 0) fb_fill_rect(x, y + 2, fill, 6, T_ACCENT);
+    /* Knob */
+    int kx = x + fill - 5;
+    if (kx < x) kx = x;
+    fb_fill_rect(kx, y, 10, 10, T_TEXT);
+    fb_draw_rect(kx, y, 10, 10, T_ACCENT);
+    /* Label */
+    char pstr[5];
+    pstr[0] = '0' + (pct / 100) % 10;
+    pstr[1] = '0' + (pct / 10) % 10;
+    pstr[2] = '0' + pct % 10;
+    pstr[3] = '%';
+    pstr[4] = '\0';
+    if (pct < 100) { pstr[0] = pstr[1]; pstr[1] = pstr[2]; pstr[2] = '%'; pstr[3] = '\0'; }
+    if (pct < 10) { pstr[0] = pstr[1]; pstr[1] = '%'; pstr[2] = '\0'; }
+    fb_text(x + w + 8, y, pstr, T_MUTED);
 }
 
 static void draw_settings(int wid, int cx, int cy, int cw, int ch) {
@@ -477,9 +556,10 @@ static void draw_settings(int wid, int cx, int cy, int cw, int ch) {
 
     static const char *tabs[] = {
         "Appearance", "Display", "Network", "Sound",
-        "Power", "Storage", "Users", "System", "About"
+        "Power", "Storage", "Keyboard", "Mouse",
+        "Privacy", "Updates", "System", "About"
     };
-    int tab_count = 9;
+    int tab_count = 12;
     for (int i = 0; i < tab_count; i++) {
         int ty = cy + 8 + i * 26;
         int hovered = point_in_rect(mx, my, cx, ty, sidebar_w, 24);
@@ -506,7 +586,7 @@ static void draw_settings(int wid, int cx, int cy, int cw, int ch) {
         /* Minimalist mode toggle */
         fb_fill_rect(px, y, pw, 40, T_PANEL);
         fb_text(px + 10, y + 6, "Minimalist Mode", T_TEXT);
-        fb_text(px + 10, y + 22, minimalist_mode ? "Sharp edges, clean UI" : "Rounded, distro-style UI", T_DIM);
+        fb_text(px + 10, y + 22, minimalist_mode ? "Sharp corners, thin borders, compact" : "Distro style: thick borders, padded, XFCE-like", T_DIM);
         draw_toggle(px + pw - 46, y + 12, minimalist_mode);
         y += 48;
 
@@ -526,17 +606,14 @@ static void draw_settings(int wid, int cx, int cy, int cw, int ch) {
 
     case 1: /* Display */
         fb_text(px, y, "Display", T_ACCENT); y += 28;
-        draw_setting_row(px + 8, y, pw, "Resolution", "1024 x 768"); y += 20;
-        draw_setting_row(px + 8, y, pw, "Color Depth", "32-bit (True Color)"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Resolution", "1280 x 960"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Color Depth", "32-bit True Color"); y += 20;
         draw_setting_row(px + 8, y, pw, "Refresh Rate", "60 Hz"); y += 20;
         draw_setting_row(px + 8, y, pw, "Framebuffer", "Linear VESA VBE"); y += 20;
-        draw_setting_row(px + 8, y, pw, "Font", "8x16 bitmap (CP437)"); y += 28;
-        fb_fill_rect(px, y, pw, 1, T_DIM); y += 8;
-        fb_text(px + 8, y, "Brightness", T_MUTED); y += 18;
-        /* brightness bar */
-        fb_fill_rect(px + 8, y, pw - 16, 8, T_DIM);
-        fb_fill_rect(px + 8, y, (pw - 16) * 3 / 4, 8, T_ACCENT);
-        fb_text(px + pw - 32, y - 2, "75%", T_TEXT);
+        draw_setting_row(px + 8, y, pw, "Font", "8x16 CP437 bitmap"); y += 28;
+        fb_fill_rect(px, y, pw, 1, T_DIM); y += 10;
+        fb_text(px + 8, y, "Brightness", T_MUTED); y += 20;
+        draw_slider(px + 8, y, pw - 60, 75);
         break;
 
     case 2: /* Network */
@@ -589,20 +666,77 @@ static void draw_settings(int wid, int cx, int cy, int cw, int ch) {
         fb_text(px + pw - 40, y - 2, "24%", T_TEXT);
         break;
 
-    case 6: /* Users */
-        fb_text(px, y, "Users", T_ACCENT); y += 28;
-        /* current user */
-        fb_fill_rect(px + 8, y, pw - 16, 44, T_PANEL);
-        fb_text(px + 18, y + 6, "root", T_ACCENT);
-        fb_text(px + 18, y + 22, "Administrator", T_DIM);
-        fb_text(px + pw - 80, y + 14, "Logged in", T_OK);
-        y += 52;
-        draw_setting_row(px + 8, y, pw, "Hostname", "darknode-os"); y += 20;
-        draw_setting_row(px + 8, y, pw, "Shell", "/bin/darksh"); y += 20;
-        draw_setting_row(px + 8, y, pw, "Home", "/root");
+    case 6: /* Keyboard */
+        fb_text(px, y, "Keyboard", T_ACCENT); y += 28;
+        draw_setting_row(px + 8, y, pw, "Layout", "US QWERTY"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Input", "PS/2 + USB HID"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Repeat Rate", "30 chars/sec"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Repeat Delay", "500 ms"); y += 28;
+        fb_fill_rect(px, y, pw, 1, T_DIM); y += 8;
+        fb_text(px + 8, y, "Shortcuts", T_MUTED); y += 18;
+        draw_setting_row(px + 8, y, pw, "F1", "Open Terminal"); y += 18;
+        draw_setting_row(px + 8, y, pw, "Arrow Keys", "Move cursor"); y += 18;
+        draw_setting_row(px + 8, y, pw, "Enter", "Click"); y += 18;
+        draw_setting_row(px + 8, y, pw, "Escape", "Release click");
         break;
 
-    case 7: /* System */
+    case 7: /* Mouse */
+        fb_text(px, y, "Mouse", T_ACCENT); y += 28;
+        draw_setting_row(px + 8, y, pw, "Type", "PS/2 + VBoxGuest"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Buttons", "3 (L, R, Middle)"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Sample Rate", "100/sec"); y += 28;
+        fb_fill_rect(px, y, pw, 1, T_DIM); y += 10;
+        fb_text(px + 8, y, "Pointer Speed", T_MUTED); y += 20;
+        draw_slider(px + 8, y, pw - 60, 50); y += 24;
+        fb_text(px + 8, y, "Sensitivity", T_MUTED); y += 20;
+        draw_slider(px + 8, y, pw - 60, 65); y += 28;
+        fb_fill_rect(px, y, pw, 40, T_PANEL);
+        fb_text(px + 10, y + 6, "Left-handed Mode", T_TEXT);
+        fb_text(px + 10, y + 22, "Swap left and right buttons", T_DIM);
+        draw_toggle(px + pw - 46, y + 12, 0); y += 48;
+        fb_fill_rect(px, y, pw, 40, T_PANEL);
+        fb_text(px + 10, y + 6, "Natural Scrolling", T_TEXT);
+        fb_text(px + 10, y + 22, "Content follows finger direction", T_DIM);
+        draw_toggle(px + pw - 46, y + 12, 0);
+        break;
+
+    case 8: /* Privacy */
+        fb_text(px, y, "Privacy & Security", T_ACCENT); y += 28;
+        fb_fill_rect(px, y, pw, 40, T_PANEL);
+        fb_text(px + 10, y + 6, "Telemetry", T_TEXT);
+        fb_text(px + 10, y + 22, "No data collected", T_DIM);
+        draw_toggle(px + pw - 46, y + 12, 0); y += 48;
+        fb_fill_rect(px, y, pw, 40, T_PANEL);
+        fb_text(px + 10, y + 6, "Crash Reports", T_TEXT);
+        fb_text(px + 10, y + 22, "Disabled", T_DIM);
+        draw_toggle(px + pw - 46, y + 12, 0); y += 48;
+        fb_fill_rect(px, y, pw, 1, T_DIM); y += 8;
+        draw_setting_row(px + 8, y, pw, "Usage Data", "None collected"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Network Access", "Local only"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Camera", "Not detected"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Microphone", "Not detected"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Location", "Disabled");
+        break;
+
+    case 9: /* Updates */
+        fb_text(px, y, "Software Updates", T_ACCENT); y += 28;
+        fb_fill_rect(px + 8, y, pw - 16, 60, T_PANEL);
+        fb_text(px + 18, y + 8, "Darknode OS v0.1.0", T_TEXT);
+        fb_text(px + 18, y + 24, "Your system is up to date.", T_OK);
+        fb_text(px + 18, y + 40, "Last checked: Never", T_DIM);
+        y += 68;
+        fb_fill_rect(px + 8, y, 140, 24, T_ACCENT);
+        fb_text(px + 18, y + 6, "Check for Updates", T_BG); y += 36;
+        fb_fill_rect(px, y, pw, 1, T_DIM); y += 8;
+        draw_setting_row(px + 8, y, pw, "Channel", "Stable"); y += 20;
+        fb_fill_rect(px, y, pw, 40, T_PANEL);
+        fb_text(px + 10, y + 6, "Auto-Update", T_TEXT);
+        fb_text(px + 10, y + 22, "Download and install automatically", T_DIM);
+        draw_toggle(px + pw - 46, y + 12, 0); y += 48;
+        draw_setting_row(px + 8, y, pw, "APT Source", "apt.darknode.ai");
+        break;
+
+    case 10: /* System */
         fb_text(px, y, "System", T_ACCENT); y += 28;
         draw_setting_row(px + 8, y, pw, "Kernel", "Darknode OS v0.1.0"); y += 20;
         draw_setting_row(px + 8, y, pw, "Architecture", "x86 (i386)"); y += 20;
@@ -611,10 +745,12 @@ static void draw_settings(int wid, int cx, int cy, int cw, int ch) {
         draw_setting_row(px + 8, y, pw, "Heap", "4 MiB at 0x400000"); y += 20;
         draw_setting_row(px + 8, y, pw, "Timer", "PIT 1000 Hz"); y += 20;
         draw_setting_row(px + 8, y, pw, "Interrupts", "PIC 8259 (remapped)"); y += 20;
-        draw_setting_row(px + 8, y, pw, "Processes", "Round-robin, PID 0-N");
+        draw_setting_row(px + 8, y, pw, "Hostname", "darknode-os"); y += 20;
+        draw_setting_row(px + 8, y, pw, "User", "root (Administrator)"); y += 20;
+        draw_setting_row(px + 8, y, pw, "Shell", "/bin/darksh");
         break;
 
-    case 8: /* About */
+    case 11: /* About */
         fb_text(px, y, "About", T_ACCENT); y += 28;
         fb_text(px + 8, y, "D A R K N O D E   O S", T_ACCENT); y += 24;
         fb_fill_rect(px + 8, y, 180, 2, T_ACCENT); y += 10;
@@ -896,7 +1032,7 @@ static void draw_hashtools(int wid, int cx, int cy, int cw, int ch) {
     fb_text(cx + 92, y + 5, "Clear", T_TEXT);
 }
 
-static void draw_about(int wid, int cx, int cy, int cw, int ch) {
+static void __attribute__((unused)) draw_about(int wid, int cx, int cy, int cw, int ch) {
     (void)wid; (void)cw; (void)ch;
     int y = cy + 16;
     fb_text(cx + 8, y, "D A R K N O D E   O S", T_ACCENT); y += 28;
@@ -1012,21 +1148,42 @@ static void launch_app(int index) {
     case 8: gui_create_window("Firewall", ox, oy, 420, 380, draw_firewall); break;
     case 9: gui_create_window("Hash Tools", ox, oy, 400, 360, draw_hashtools); break;
     case 10: gui_create_window("Settings", ox, oy, 560, 480, draw_settings); break;
-    case 11: gui_create_window("About Darknode", ox, oy, 340, 380, draw_about); break;
+    case 11: gui_create_window("About Darknode", ox, oy, 400, 400, draw_welcome); break;
     }
 }
 
 /* ── event handling ── */
+
+#define RESIZE_GRAB 6
+#define MIN_WIN_W 200
+#define MIN_WIN_H 120
+#define EDGE_L 1
+#define EDGE_R 2
+#define EDGE_T 4
+#define EDGE_B 8
+
+static int hit_test_resize(gui_window_t *w, int mx, int my) {
+    int edge = 0;
+    if (mx >= w->x && mx < w->x + RESIZE_GRAB) edge |= EDGE_L;
+    if (mx >= w->x + w->w - RESIZE_GRAB && mx < w->x + w->w) edge |= EDGE_R;
+    if (my >= w->y && my < w->y + RESIZE_GRAB) edge |= EDGE_T;
+    if (my >= w->y + w->h - RESIZE_GRAB && my < w->y + w->h) edge |= EDGE_B;
+    return edge;
+}
 
 static int hit_test_window(int mx, int my, int *part) {
     for (int i = order_count - 1; i >= 0; i--) {
         int id = win_order[i];
         gui_window_t *w = &windows[id];
         if (!w->visible) continue;
-        if (!point_in_rect(mx, my, w->x, w->y, w->w, w->h)) continue;
-        if (point_in_rect(mx, my, w->x + w->w - 22, w->y + 4, 18, 16)) { *part = 2; return id; }
-        if (my < w->y + TITLEBAR_HEIGHT) { *part = 1; return id; }
-        *part = 0; return id;
+        /* Check resize zone (slightly outside window bounds too) */
+        if (point_in_rect(mx, my, w->x - 2, w->y - 2, w->w + 4, w->h + 4)) {
+            int edge = hit_test_resize(w, mx, my);
+            if (edge) { *part = 3; windows[id].resize_edge = edge; return id; }
+            if (point_in_rect(mx, my, w->x + w->w - 22, w->y + 4, 18, 16)) { *part = 2; return id; }
+            if (my < w->y + (minimalist_mode ? title_h() : 28)) { *part = 1; return id; }
+            if (point_in_rect(mx, my, w->x, w->y, w->w, w->h)) { *part = 0; return id; }
+        }
     }
     return -1;
 }
@@ -1056,7 +1213,7 @@ static void handle_mouse(void) {
         /* check start menu click first */
         if (menu_open) {
             int menu_h = MENU_COUNT * MENU_ITEM_H + 8;
-            int menu_y = sh - TASKBAR_HEIGHT - menu_h;
+            int menu_y = sh - tb_h() - menu_h;
             if (point_in_rect(mx, my, 4, menu_y, MENU_W, menu_h)) {
                 int idx = (my - menu_y - 4) / MENU_ITEM_H;
                 if (idx >= 0 && idx < MENU_COUNT) {
@@ -1069,7 +1226,7 @@ static void handle_mouse(void) {
             goto done;
         }
 
-        if (my >= sh - TASKBAR_HEIGHT) {
+        if (my >= sh - tb_h()) {
             if (mx < 48) {
                 menu_open = !menu_open; dirty = 1;
             } else {
@@ -1098,20 +1255,20 @@ static void handle_mouse(void) {
                 if (part == 2) { gui_close_window(id); dirty = 1; }
                 else if (part == 0 && windows[id].draw_content == draw_settings) {
                     int body_x = windows[id].x + 1;
-                    int body_y = windows[id].y + TITLEBAR_HEIGHT + 1;
+                    int body_y = windows[id].y + title_h() + 1;
                     int sidebar_w = 110;
 
                     if (mx < body_x + sidebar_w + 4) {
                         /* Sidebar tab click */
                         int tab_idx = (my - body_y - 8) / 26;
-                        if (tab_idx >= 0 && tab_idx < 9) {
+                        if (tab_idx >= 0 && tab_idx < 12) {
                             settings_tab = tab_idx;
                             dirty = 1;
                         }
                     } else if (settings_tab == 0) {
                         /* Appearance tab clicks */
-                        int px = body_x + sidebar_w + 16 + 4;
-                        int pw = windows[id].w - 2 - sidebar_w - 32;
+                        int px = body_x + sidebar_w + 16 + 4; (void)px;
+                        int pw = windows[id].w - 2 - sidebar_w - 32; (void)pw;
                         int toggle_y = body_y + 8 + 28; /* minimalist toggle row */
 
                         /* Minimalist mode toggle */
@@ -1130,6 +1287,10 @@ static void handle_mouse(void) {
                         }
                     }
                 }
+                else if (part == 3) {
+                    windows[id].resizing = 1;
+                    mouse_down_win = id;
+                }
                 else if (part == 1) {
                     windows[id].dragging = 1;
                     windows[id].drag_ox = mx - windows[id].x;
@@ -1142,20 +1303,29 @@ static void handle_mouse(void) {
 
     if (held && mouse_down_win >= 0) {
         gui_window_t *w = &windows[mouse_down_win];
-        if (w->dragging) {
+        if (w->resizing) {
+            int e = w->resize_edge;
+            int dx = mx - prev_mx, dy = my - prev_my;
+            if (e & EDGE_R) { w->w += dx; if (w->w < MIN_WIN_W) w->w = MIN_WIN_W; }
+            if (e & EDGE_B) { w->h += dy; if (w->h < MIN_WIN_H) w->h = MIN_WIN_H; }
+            if (e & EDGE_L) { int nw = w->w - dx; if (nw >= MIN_WIN_W) { w->x += dx; w->w = nw; } }
+            if (e & EDGE_T) { int nh = w->h - dy; if (nh >= MIN_WIN_H) { w->y += dy; w->h = nh; } }
+            dirty = 1;
+        } else if (w->dragging) {
             w->x = mx - w->drag_ox; dirty = 1;
             w->y = my - w->drag_oy;
             if (w->x < 0) w->x = 0;
             if (w->y < 0) w->y = 0;
             int sw = fb_width();
             if (w->x + w->w > sw) w->x = sw - w->w;
-            if (w->y + w->h > sh - TASKBAR_HEIGHT) w->y = sh - TASKBAR_HEIGHT - w->h;
+            if (w->y + w->h > sh - (minimalist_mode ? 32 : 38)) w->y = sh - (minimalist_mode ? 32 : 38) - w->h;
         }
     }
 
     if (released) {
         if (mouse_down_win >= 0) {
             windows[mouse_down_win].dragging = 0;
+            windows[mouse_down_win].resizing = 0;
             mouse_down_win = -1;
         }
     }

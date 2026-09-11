@@ -75,7 +75,7 @@ int udp_send(uint32_t dst_ip, uint16_t dst_port, uint16_t src_port,
     pseudo.udp_length = htons(total);
 
     uint32_t sum = 0;
-    const uint16_t *p = (const uint16_t *)&pseudo;
+    const uint8_t *pb = (const uint8_t *)&pseudo; uint16_t pw2; uint32_t sum2 = 0; for (unsigned k = 0; k + 1 < sizeof(pseudo); k += 2) { pw2 = (uint16_t)pb[k] | ((uint16_t)pb[k+1] << 8); sum2 += pw2; } const uint16_t *p = (const uint16_t *)(void *)&pseudo;
     for (int i = 0; i < 6; i++) sum += p[i];
     p = (const uint16_t *)buf;
     uint16_t len = total;
