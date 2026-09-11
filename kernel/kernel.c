@@ -16,7 +16,10 @@
 #include "../drivers/rtc.h"
 #include "../drivers/pci.h"
 #include "../drivers/ata.h"
+#include "../drivers/ahci.h"
 #include "../drivers/ne2000.h"
+#include "../drivers/rtl8139.h"
+#include "../drivers/acpi.h"
 #include "../fs/vfs.h"
 #include "../fs/ramfs.h"
 #include "../fs/devfs.h"
@@ -28,7 +31,11 @@
 #include "../net/dhcp.h"
 #include "../net/dns.h"
 #include "../drivers/mouse.h"
+#include "../drivers/usb.h"
+#include "../drivers/usb_hid.h"
+#include "../drivers/vbox.h"
 #include "framebuffer.h"
+#include "theme.h"
 #include "gui.h"
 
 static void boot_banner(void) {
@@ -112,7 +119,15 @@ void kmain(uint32_t magic, multiboot2_info_t *mbi) {
     strcat(pcibuf, " devices found");
     boot_log("PCI", pcibuf);
 
+    /* ACPI */
+    if (acpi_init() == 0) {
+        boot_log("ACPI", acpi_oem_id());
+    } else {
+        boot_log("ACPI", "not found (fallback power control)");
+    }
+
     ata_init();
+    ahci_init();
     {
         uint32_t dc = ata_drive_count();
         if (dc > 0) {
@@ -185,6 +200,22 @@ void kmain(uint32_t magic, multiboot2_info_t *mbi) {
         }
         dns_set_server(dhcp_get_dns());
         boot_log("Network", "stack ready");
+    } else if (rtl8139_init() == 0) {
+        eth_init();
+        arp_init();
+        ipv4_init();
+        icmp_init();
+        udp_init();
+        dhcp_init();
+        dns_init();
+        boot_log("RTL8139", "Realtek NIC detected");
+        if (dhcp_discover() != 0) {
+            console_write_color("  [", DN_COLOR_FG);
+            console_write_color("!!", DN_COLOR_WARN);
+            console_write("] DHCP — no response, use 'dhcp' to retry\n");
+        }
+        dns_set_server(dhcp_get_dns());
+        boot_log("Network", "stack ready (RTL8139)");
     } else {
         boot_log("Network", "no NIC detected — networking disabled");
     }
@@ -192,6 +223,14 @@ void kmain(uint32_t magic, multiboot2_info_t *mbi) {
     /* Mouse */
     mouse_init();
     boot_log("PS/2 Mouse", "IRQ12 active");
+
+    /* USB */
+    usb_init();
+    usb_hid_init();
+    boot_log("USB", "UHCI controller + HID keyboard/mouse");
+
+    /* VirtualBox Guest Device — absolute mouse without capture */
+    vbox_init();
 
     /* Check for framebuffer from multiboot2 */
     uint32_t *fb_addr = 0;
@@ -233,6 +272,7 @@ void kmain(uint32_t magic, multiboot2_info_t *mbi) {
         boot_log("Graphics", fbbuf);
 
         mouse_set_bounds(fb_w, fb_h);
+        theme_init();
         serial_write("[darknode] calling fb_init\n");
         fb_init(fb_addr, fb_w, fb_h, fb_pitch);
         serial_write("[darknode] fb_init done\n");
