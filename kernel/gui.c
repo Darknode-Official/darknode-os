@@ -1225,19 +1225,9 @@ static void launch_app(int index) {
     case 0: { int tid = gui_create_window("Terminal", ox, oy, 540, 340, 0);
         gui_window_print(tid,
             "Darknode OS v0.1.0 (tty1)\n"
-            "Kernel: x86 custom | 128 MB RAM | 1024x768\n"
+            "Type 'help' for commands.\n"
             "\n"
-            "[ok] VFS mounted (ramfs at /)\n"
-            "[ok] devfs at /dev\n"
-            "[ok] ATA + AHCI disk drivers\n"
-            "[ok] NE2000 + RTL8139 NIC\n"
-            "[ok] TCP/IP stack ready\n"
-            "[ok] ACPI power management\n"
-            "[ok] USB UHCI + HID\n"
-            "[ok] VBoxGuest mouse\n"
-            "[ok] GUI framebuffer 1024x768x32\n"
-            "\n"
-            "root@darknode:~# _\n"
+            "root@darknode:~# "
         );
         dirty = 1; break; }
     case 1: gui_create_window("File Manager", ox, oy, 440, 400, draw_filemanager); break;
@@ -1599,6 +1589,160 @@ static int focused_terminal(void) {
     return -1;
 }
 
+/* ── Terminal command execution ── */
+
+static const char *term_prompt = "root@darknode:~# ";
+
+static void term_append(gui_window_t *w, const char *s) {
+    while (*s && w->text_len < 4090) {
+        w->textbuf[w->text_len++] = *s++;
+    }
+    w->textbuf[w->text_len] = '\0';
+}
+
+static void term_trim_if_full(gui_window_t *w) {
+    if (w->text_len > 3900) {
+        int cut = 1000;
+        while (cut < w->text_len && w->textbuf[cut] != '\n') cut++;
+        if (cut < w->text_len) cut++;
+        int remain = w->text_len - cut;
+        for (int i = 0; i < remain; i++)
+            w->textbuf[i] = w->textbuf[i + cut];
+        w->text_len = remain;
+        w->textbuf[w->text_len] = '\0';
+    }
+}
+
+static int str_starts(const char *s, const char *prefix) {
+    while (*prefix) { if (*s++ != *prefix++) return 0; }
+    return 1;
+}
+
+static void term_exec(gui_window_t *w) {
+    /* Find the command: search backwards for "# " */
+    int cmd_start = -1;
+    for (int i = w->text_len - 1; i >= 1; i--) {
+        if (w->textbuf[i] == ' ' && w->textbuf[i - 1] == '#') {
+            cmd_start = i + 1;
+            break;
+        }
+    }
+    char cmd[128];
+    int cmd_len2 = 0;
+    if (cmd_start >= 0 && cmd_start < w->text_len) {
+        for (int i = cmd_start; i < w->text_len && cmd_len2 < 126; i++)
+            cmd[cmd_len2++] = w->textbuf[i];
+    }
+    cmd[cmd_len2] = '\0';
+
+    /* Strip trailing spaces */
+    while (cmd_len2 > 0 && cmd[cmd_len2 - 1] == ' ') cmd[--cmd_len2] = '\0';
+
+    term_append(w, "\n");
+
+    if (cmd_len2 == 0) {
+        /* Empty command — just new prompt */
+    } else if (strcmp(cmd, "help") == 0) {
+        term_append(w, "Available commands:\n");
+        term_append(w, "  help       Show this message\n");
+        term_append(w, "  whoami     Current user\n");
+        term_append(w, "  hostname   System hostname\n");
+        term_append(w, "  uname      System information\n");
+        term_append(w, "  uptime     System uptime\n");
+        term_append(w, "  date       Current time\n");
+        term_append(w, "  ls         List files\n");
+        term_append(w, "  pwd        Working directory\n");
+        term_append(w, "  free       Memory usage\n");
+        term_append(w, "  ps         Process list\n");
+        term_append(w, "  ifconfig   Network info\n");
+        term_append(w, "  echo       Print text\n");
+        term_append(w, "  neofetch   System summary\n");
+        term_append(w, "  clear      Clear terminal\n");
+        term_append(w, "  cat        Read file\n");
+    } else if (strcmp(cmd, "whoami") == 0) {
+        term_append(w, "root\n");
+    } else if (strcmp(cmd, "hostname") == 0) {
+        term_append(w, "darknode-os\n");
+    } else if (strcmp(cmd, "uname") == 0 || strcmp(cmd, "uname -a") == 0) {
+        term_append(w, "Darknode OS 0.1.0 x86 i386\n");
+    } else if (strcmp(cmd, "uptime") == 0 || strcmp(cmd, "date") == 0) {
+        char ubuf[16];
+        uint32_t sec = timer_get_ticks() / 1000;
+        uint32_t h = sec / 3600; sec %= 3600;
+        uint32_t m = sec / 60; sec %= 60;
+        ubuf[0] = 'U'; ubuf[1] = 'p'; ubuf[2] = ' ';
+        ubuf[3] = '0' + (h / 10); ubuf[4] = '0' + (h % 10);
+        ubuf[5] = ':';
+        ubuf[6] = '0' + (m / 10); ubuf[7] = '0' + (m % 10);
+        ubuf[8] = ':';
+        ubuf[9] = '0' + (sec / 10); ubuf[10] = '0' + (sec % 10);
+        ubuf[11] = '\n'; ubuf[12] = '\0';
+        term_append(w, ubuf);
+    } else if (strcmp(cmd, "ls") == 0) {
+        term_append(w, "dev/  tmp/  proc/  etc/  home/  var/  boot/\n");
+    } else if (strcmp(cmd, "ls /dev") == 0) {
+        term_append(w, "null  zero  random  console  serial  rtc\n");
+    } else if (strcmp(cmd, "pwd") == 0) {
+        term_append(w, "/\n");
+    } else if (strcmp(cmd, "cat /etc/hostname") == 0) {
+        term_append(w, "darknode-os\n");
+    } else if (strcmp(cmd, "free") == 0) {
+        term_append(w, "       Total    Used    Free\n");
+        term_append(w, "Mem:   128 MB   38 MB   90 MB\n");
+        term_append(w, "Heap:    4 MB    1 MB    3 MB\n");
+    } else if (strcmp(cmd, "ps") == 0) {
+        term_append(w, "PID  NAME         STATE\n");
+        term_append(w, "  0  idle         Running\n");
+        term_append(w, "  1  kernel       Running\n");
+        term_append(w, "  2  shell        Sleeping\n");
+        term_append(w, "  3  scheduler    Running\n");
+        term_append(w, "  4  timer        Running\n");
+        term_append(w, "  5  keyboard     Waiting\n");
+        term_append(w, "  6  mouse        Waiting\n");
+        term_append(w, "  7  ne2000       Running\n");
+        term_append(w, "  8  ata          Sleeping\n");
+        term_append(w, "  9  gui          Running\n");
+        term_append(w, " 10  framebuffer  Running\n");
+        term_append(w, " 11  dhcp         Sleeping\n");
+    } else if (strcmp(cmd, "ifconfig") == 0 || strcmp(cmd, "ip a") == 0) {
+        term_append(w, "eth0: flags=4163<UP,BROADCAST,RUNNING>\n");
+        term_append(w, "  inet 10.0.2.15  mask 255.255.255.0\n");
+        term_append(w, "  ether 52:54:00:12:34:56\n");
+        term_append(w, "  gateway 10.0.2.2\n");
+        term_append(w, "  dns 10.0.2.3\n");
+    } else if (strcmp(cmd, "neofetch") == 0) {
+        term_append(w, "root@darknode-os\n");
+        term_append(w, "----------------\n");
+        term_append(w, "OS:     Darknode OS 0.1.0\n");
+        term_append(w, "Kernel: Custom x86\n");
+        term_append(w, "Shell:  darksh\n");
+        term_append(w, "CPU:    x86 (i386)\n");
+        term_append(w, "Memory: 38 MB / 128 MB\n");
+        term_append(w, "Disk:   ramfs 4 MB\n");
+        term_append(w, "Net:    10.0.2.15\n");
+        term_append(w, "Theme:  ");
+        term_append(w, theme_name(theme_get()));
+        term_append(w, "\n");
+    } else if (strcmp(cmd, "clear") == 0) {
+        w->text_len = 0;
+        w->textbuf[0] = '\0';
+    } else if (str_starts(cmd, "echo ")) {
+        term_append(w, cmd + 5);
+        term_append(w, "\n");
+    } else if (str_starts(cmd, "cat ")) {
+        term_append(w, "cat: ");
+        term_append(w, cmd + 4);
+        term_append(w, ": No such file\n");
+    } else {
+        term_append(w, "darksh: command not found: ");
+        term_append(w, cmd);
+        term_append(w, "\n");
+    }
+
+    term_trim_if_full(w);
+    term_append(w, term_prompt);
+}
+
 void gui_run(void) {
     uint32_t last_redraw = 0;
     uint32_t last_clock = 0;
@@ -1615,26 +1759,27 @@ void gui_run(void) {
                 /* Typing into the focused terminal window */
                 gui_window_t *w = &windows[term];
                 if (key == '\b') {
-                    /* Backspace — remove last char if not at prompt */
-                    if (w->text_len > 0 && w->textbuf[w->text_len - 1] != '\n'
-                        && w->textbuf[w->text_len - 1] != '#'
-                        && w->textbuf[w->text_len - 1] != ' ') {
-                        w->text_len--;
-                        w->textbuf[w->text_len] = '\0';
-                        dirty = 1;
+                    /* Backspace — remove last char if not at prompt marker */
+                    if (w->text_len > 0) {
+                        char last = w->textbuf[w->text_len - 1];
+                        if (last != '\n' && last != '#') {
+                            /* Don't delete past the "# " prompt */
+                            int prompt_end = -1;
+                            for (int pi = w->text_len - 1; pi >= 1; pi--) {
+                                if (w->textbuf[pi] == ' ' && w->textbuf[pi-1] == '#') {
+                                    prompt_end = pi + 1; break;
+                                }
+                            }
+                            if (prompt_end < 0 || w->text_len > prompt_end) {
+                                w->text_len--;
+                                w->textbuf[w->text_len] = '\0';
+                                dirty = 1;
+                            }
+                        }
                     }
                 } else if (key == '\n') {
-                    /* Enter — add newline + new prompt */
-                    if (w->text_len < 4090) {
-                        w->textbuf[w->text_len++] = '\n';
-                        /* Echo a fake command response */
-                        const char *prompt = "root@darknode:~# ";
-                        int plen = 17;
-                        for (int i = 0; i < plen && w->text_len < 4090; i++)
-                            w->textbuf[w->text_len++] = prompt[i];
-                        w->textbuf[w->text_len] = '\0';
-                        dirty = 1;
-                    }
+                    term_exec(w);
+                    dirty = 1;
                 } else if (key >= 32 && key < 127) {
                     /* Printable character */
                     if (w->text_len < 4090) {
@@ -1651,6 +1796,7 @@ void gui_run(void) {
                         540, 340, 0);
                     gui_window_print(id,
                         "Darknode OS v0.1.0 (tty1)\n"
+                        "Type 'help' for commands.\n\n"
                         "root@darknode:~# ");
                     dirty = 1;
                 }
