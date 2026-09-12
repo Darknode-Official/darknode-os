@@ -39,6 +39,20 @@ static int cascade_off = 0;
 static int minimalist_mode = 1;
 static int settings_tab = 0;
 
+/* calculator state */
+static int calc_val = 0;
+static int calc_prev = 0;
+static char calc_op = 0;
+static int calc_new = 1;
+
+/* right-click context menu */
+static int rclick_open = 0;
+static int rclick_x = 0, rclick_y = 0;
+static int rclick_type = 0; /* 0=desktop, 1=window title */
+static int rclick_win = -1;
+#define RCLICK_W 140
+#define RCLICK_ITEM_H 24
+
 /* cursor bitmap (1 = white, 2 = black outline) */
 static const uint8_t cursor_bmp[CURSOR_H][CURSOR_W] = {
     {2,0,0,0,0,0,0,0,0,0,0,0},
@@ -213,11 +227,16 @@ static void draw_taskbar(void) {
     for (int i = 0; i < order_count; i++) {
         int id = win_order[i];
         gui_window_t *w = &windows[id];
-        if (!w->visible) continue;
         int tw = (int)strlen(w->title) * 8 + 16;
         if (tw > 140) tw = 140;
-        uint32_t bg = w->focused ? T_ACCENT : T_PANEL_HI;
-        uint32_t fg = w->focused ? T_BG : T_TEXT;
+        uint32_t bg, fg;
+        if (!w->visible) {
+            bg = T_PANEL; fg = T_DIM; /* minimized — dimmed */
+        } else if (w->focused) {
+            bg = T_ACCENT; fg = T_BG;
+        } else {
+            bg = T_PANEL_HI; fg = T_TEXT;
+        }
         fb_fill_rect(bx, btn_y, tw, btn_h, bg);
         if (!minimalist_mode) {
             fb_draw_line(bx, btn_y, bx + tw, btn_y, w->focused ? T_TEXT : T_MUTED);
@@ -255,12 +274,29 @@ static void draw_window(int id) {
         fb_text(w->x + (w->w - tw) / 2, w->y + (th - 16) / 2 + brd, w->title, T_TEXT);
     }
 
-    /* Close button */
-    int close_sz = minimalist_mode ? 16 : 18;
-    int cx = w->x + w->w - close_sz - 6, cy = w->y + brd + (th - close_sz) / 2;
-    fb_fill_rect(cx, cy, close_sz, close_sz, T_ERR);
-    if (!minimalist_mode) fb_draw_rect(cx, cy, close_sz, close_sz, T_PANEL_HI);
-    fb_glyph(cx + (close_sz - 8) / 2, cy + (close_sz - 16) / 2, 'X', T_TEXT);
+    /* Window buttons: [_] minimize, [O] maximize, [X] close */
+    int btn_sz = minimalist_mode ? 16 : 18;
+    int btn_y = w->y + brd + (th - btn_sz) / 2;
+    int btn_gap = btn_sz + 4;
+
+    /* Minimize */
+    int min_x = w->x + w->w - btn_gap * 3 - 2;
+    fb_fill_rect(min_x, btn_y, btn_sz, btn_sz, T_PANEL);
+    fb_draw_rect(min_x, btn_y, btn_sz, btn_sz, T_DIM);
+    fb_fill_rect(min_x + 3, btn_y + btn_sz - 5, btn_sz - 6, 2, T_TEXT);
+
+    /* Maximize */
+    int max_x = w->x + w->w - btn_gap * 2 - 2;
+    fb_fill_rect(max_x, btn_y, btn_sz, btn_sz, T_PANEL);
+    fb_draw_rect(max_x, btn_y, btn_sz, btn_sz, T_DIM);
+    fb_draw_rect(max_x + 3, btn_y + 3, btn_sz - 6, btn_sz - 6, T_TEXT);
+    fb_fill_rect(max_x + 3, btn_y + 3, btn_sz - 6, 2, T_TEXT);
+
+    /* Close */
+    int cx = w->x + w->w - btn_gap - 2;
+    fb_fill_rect(cx, btn_y, btn_sz, btn_sz, T_ERR);
+    if (!minimalist_mode) fb_draw_rect(cx, btn_y, btn_sz, btn_sz, T_PANEL_HI);
+    fb_glyph(cx + (btn_sz - 8) / 2, btn_y + (btn_sz - 16) / 2, 'X', T_TEXT);
 
     /* Body */
     int bx = w->x + brd, by = w->y + th + brd;
@@ -456,6 +492,49 @@ static void draw_filemanager(int wid, int cx, int cy, int cw, int ch) {
     }
 }
 
+static void calc_digit(int d) {
+    if (calc_new) { calc_val = 0; calc_new = 0; }
+    if (calc_val < 99999999) calc_val = calc_val * 10 + d;
+}
+
+static void calc_operator(char op) {
+    if (calc_op && !calc_new) {
+        switch (calc_op) {
+        case '+': calc_prev = calc_prev + calc_val; break;
+        case '-': calc_prev = calc_prev - calc_val; break;
+        case '*': calc_prev = calc_prev * calc_val; break;
+        case '/': if (calc_val != 0) calc_prev = calc_prev / calc_val; break;
+        }
+    } else {
+        calc_prev = calc_val;
+    }
+    calc_op = op;
+    calc_new = 1;
+}
+
+static void calc_equals(void) {
+    if (calc_op) {
+        switch (calc_op) {
+        case '+': calc_val = calc_prev + calc_val; break;
+        case '-': calc_val = calc_prev - calc_val; break;
+        case '*': calc_val = calc_prev * calc_val; break;
+        case '/': if (calc_val != 0) calc_val = calc_prev / calc_val; break;
+        }
+    }
+    calc_op = 0;
+    calc_prev = 0;
+    calc_new = 1;
+}
+
+static void calc_int_to_str(int v, char *buf) {
+    if (v < 0) { buf[0] = '-'; calc_int_to_str(-v, buf + 1); return; }
+    if (v == 0) { buf[0] = '0'; buf[1] = '\0'; return; }
+    char tmp[16]; int i = 0;
+    while (v > 0 && i < 15) { tmp[i++] = '0' + (v % 10); v /= 10; }
+    for (int j = 0; j < i; j++) buf[j] = tmp[i - 1 - j];
+    buf[i] = '\0';
+}
+
 static void draw_calculator(int wid, int cx, int cy, int cw, int ch) {
     (void)wid; (void)ch;
     int y = cy;
@@ -463,7 +542,14 @@ static void draw_calculator(int wid, int cx, int cy, int cw, int ch) {
     /* display */
     fb_fill_rect(cx, y, cw, 36, T_PANEL);
     fb_draw_rect(cx, y, cw, 36, T_DIM);
-    fb_text(cx + cw - 24, y + 12, "0", T_TEXT);
+    char dispbuf[16];
+    calc_int_to_str(calc_val, dispbuf);
+    int dlen = (int)strlen(dispbuf);
+    fb_text(cx + cw - dlen * 8 - 8, y + 12, dispbuf, T_TEXT);
+    if (calc_op) {
+        char opbuf[2] = { calc_op, '\0' };
+        fb_text(cx + 8, y + 12, opbuf, T_DIM);
+    }
     y += 44;
 
     /* button grid */
@@ -1069,6 +1155,22 @@ void gui_redraw(void) {
             draw_window(win_order[i]);
         draw_taskbar();
         draw_start_menu();
+        /* Right-click context menu */
+        if (rclick_open) {
+            static const char *desk_items[] = { "Terminal", "File Manager", "Settings", "Refresh" };
+            static const char *win_items[] = { "Minimize", "Maximize", "Close" };
+            const char **items = (rclick_type == 0) ? desk_items : win_items;
+            int n = (rclick_type == 0) ? 4 : 3;
+            int mh = n * RCLICK_ITEM_H + 4;
+            fb_fill_rect(rclick_x, rclick_y, RCLICK_W, mh, T_PANEL);
+            fb_draw_rect(rclick_x, rclick_y, RCLICK_W, mh, T_ACCENT);
+            for (int i = 0; i < n; i++) {
+                int iy = rclick_y + 2 + i * RCLICK_ITEM_H;
+                int hov = point_in_rect(mx, my, rclick_x, iy, RCLICK_W, RCLICK_ITEM_H);
+                if (hov) fb_fill_rect(rclick_x + 2, iy, RCLICK_W - 4, RCLICK_ITEM_H, T_ACCENT);
+                fb_text(rclick_x + 10, iy + 6, items[i], hov ? T_BG : T_TEXT);
+            }
+        }
         cursor_draw(mx, my);
         dirty = 0;
     } else if (mx != cursor_saved_x || my != cursor_saved_y) {
@@ -1180,7 +1282,15 @@ static int hit_test_window(int mx, int my, int *part) {
         if (point_in_rect(mx, my, w->x - 2, w->y - 2, w->w + 4, w->h + 4)) {
             int edge = hit_test_resize(w, mx, my);
             if (edge) { *part = 3; windows[id].resize_edge = edge; return id; }
-            if (point_in_rect(mx, my, w->x + w->w - 22, w->y + 4, 18, 16)) { *part = 2; return id; }
+            int bsz = minimalist_mode ? 16 : 18;
+            int bgap = bsz + 4;
+            int by2 = w->y + border_w() + (title_h() - bsz) / 2;
+            /* Close button */
+            if (point_in_rect(mx, my, w->x + w->w - bgap - 2, by2, bsz, bsz)) { *part = 2; return id; }
+            /* Maximize button */
+            if (point_in_rect(mx, my, w->x + w->w - bgap * 2 - 2, by2, bsz, bsz)) { *part = 5; return id; }
+            /* Minimize button */
+            if (point_in_rect(mx, my, w->x + w->w - bgap * 3 - 2, by2, bsz, bsz)) { *part = 4; return id; }
             if (my < w->y + (minimalist_mode ? title_h() : 28)) { *part = 1; return id; }
             if (point_in_rect(mx, my, w->x, w->y, w->w, w->h)) { *part = 0; return id; }
         }
@@ -1231,7 +1341,7 @@ static void handle_mouse(void) {
                 menu_open = !menu_open; dirty = 1;
             } else {
                 int id = hit_test_taskbar_window(mx);
-                if (id >= 0) { raise_window(id); dirty = 1; }
+                if (id >= 0) { windows[id].visible = 1; raise_window(id); dirty = 1; }
             }
         } else {
             /* check desktop icon clicks */
@@ -1253,6 +1363,46 @@ static void handle_mouse(void) {
             if (id >= 0) {
                 raise_window(id); dirty = 1;
                 if (part == 2) { gui_close_window(id); dirty = 1; }
+                else if (part == 4) { windows[id].visible = 0; dirty = 1; }
+                else if (part == 5) {
+                    /* Maximize / restore */
+                    gui_window_t *mw = &windows[id];
+                    if (mw->maximized) {
+                        mw->x = mw->saved_x; mw->y = mw->saved_y;
+                        mw->w = mw->saved_w; mw->h = mw->saved_h;
+                        mw->maximized = 0;
+                    } else {
+                        mw->saved_x = mw->x; mw->saved_y = mw->y;
+                        mw->saved_w = mw->w; mw->saved_h = mw->h;
+                        mw->x = 0; mw->y = 22;
+                        mw->w = fb_width();
+                        mw->h = fb_height() - 22 - tb_h();
+                        mw->maximized = 1;
+                    }
+                    dirty = 1;
+                }
+                else if (part == 0 && windows[id].draw_content == draw_calculator) {
+                    /* Calculator button clicks */
+                    gui_window_t *cw2 = &windows[id];
+                    int brd2 = border_w();
+                    int body_x2 = cw2->x + brd2 + 4;
+                    int body_y2 = cw2->y + title_h() + brd2 + 4;
+                    int body_w2 = cw2->w - brd2 * 2 - 8;
+                    int btn_w2 = (body_w2 - 12) / 4;
+                    int grid_y = body_y2 + 44;
+                    static const char btns[] = "789/456*123-0.=+";
+                    if (my >= grid_y && mx >= body_x2) {
+                        int row = (my - grid_y) / 36;
+                        int col2 = (mx - body_x2) / (btn_w2 + 4);
+                        if (row >= 0 && row < 4 && col2 >= 0 && col2 < 4) {
+                            char b = btns[row * 4 + col2];
+                            if (b >= '0' && b <= '9') calc_digit(b - '0');
+                            else if (b == '=') calc_equals();
+                            else if (b == '+' || b == '-' || b == '*' || b == '/') calc_operator(b);
+                            dirty = 1;
+                        }
+                    }
+                }
                 else if (part == 0 && windows[id].draw_content == draw_settings) {
                     int body_x = windows[id].x + 1;
                     int body_y = windows[id].y + title_h() + 1;
@@ -1324,10 +1474,99 @@ static void handle_mouse(void) {
 
     if (released) {
         if (mouse_down_win >= 0) {
-            windows[mouse_down_win].dragging = 0;
-            windows[mouse_down_win].resizing = 0;
+            gui_window_t *rw = &windows[mouse_down_win];
+            if (rw->dragging && !rw->maximized) {
+                int sw = fb_width();
+                /* Window snap to edges */
+                if (rw->x <= 0) {
+                    /* Snap left half */
+                    rw->saved_x = rw->x; rw->saved_y = rw->y;
+                    rw->saved_w = rw->w; rw->saved_h = rw->h;
+                    rw->x = 0; rw->y = 22;
+                    rw->w = sw / 2; rw->h = fb_height() - 22 - tb_h();
+                    rw->maximized = 2; /* 2 = snapped, not fully maximized */
+                    dirty = 1;
+                } else if (rw->x + rw->w >= sw) {
+                    /* Snap right half */
+                    rw->saved_x = rw->x; rw->saved_y = rw->y;
+                    rw->saved_w = rw->w; rw->saved_h = rw->h;
+                    rw->x = sw / 2; rw->y = 22;
+                    rw->w = sw / 2; rw->h = fb_height() - 22 - tb_h();
+                    rw->maximized = 2;
+                    dirty = 1;
+                } else if (rw->y <= 22) {
+                    /* Snap maximize */
+                    rw->saved_x = rw->x; rw->saved_y = rw->y;
+                    rw->saved_w = rw->w; rw->saved_h = rw->h;
+                    rw->x = 0; rw->y = 22;
+                    rw->w = sw; rw->h = fb_height() - 22 - tb_h();
+                    rw->maximized = 1;
+                    dirty = 1;
+                }
+            }
+            rw->dragging = 0;
+            rw->resizing = 0;
             mouse_down_win = -1;
         }
+    }
+
+    /* Right-click handling */
+    int rpressed = (mb & 2) && !(prev_mb & 2);
+    if (rpressed) {
+        if (rclick_open) {
+            rclick_open = 0; dirty = 1;
+        } else {
+            int part;
+            int id = hit_test_window(mx, my, &part);
+            if (id >= 0 && part == 1) {
+                /* Right-click on title bar */
+                rclick_open = 1; rclick_x = mx; rclick_y = my;
+                rclick_type = 1; rclick_win = id;
+                dirty = 1;
+            } else if (id < 0 && my < sh - tb_h()) {
+                /* Right-click on desktop */
+                rclick_open = 1; rclick_x = mx; rclick_y = my;
+                rclick_type = 0; rclick_win = -1;
+                dirty = 1;
+            }
+        }
+    }
+
+    /* Left-click on right-click menu items */
+    if (pressed && rclick_open) {
+        int n_items = (rclick_type == 0) ? 4 : 3;
+        int menu_h2 = n_items * RCLICK_ITEM_H + 4;
+        if (point_in_rect(mx, my, rclick_x, rclick_y, RCLICK_W, menu_h2)) {
+            int idx = (my - rclick_y - 2) / RCLICK_ITEM_H;
+            if (rclick_type == 0) {
+                /* Desktop: Terminal, File Manager, Settings, Refresh */
+                if (idx == 0) launch_app(0);
+                else if (idx == 1) launch_app(1);
+                else if (idx == 2) launch_app(10);
+                /* idx==3 refresh = just redraw */
+            } else if (rclick_win >= 0) {
+                /* Window: Minimize, Maximize, Close */
+                if (idx == 0) windows[rclick_win].visible = 0;
+                else if (idx == 1) {
+                    gui_window_t *mw = &windows[rclick_win];
+                    if (mw->maximized) {
+                        mw->x = mw->saved_x; mw->y = mw->saved_y;
+                        mw->w = mw->saved_w; mw->h = mw->saved_h;
+                        mw->maximized = 0;
+                    } else {
+                        mw->saved_x = mw->x; mw->saved_y = mw->y;
+                        mw->saved_w = mw->w; mw->saved_h = mw->h;
+                        mw->x = 0; mw->y = 22;
+                        mw->w = fb_width();
+                        mw->h = fb_height() - 22 - tb_h();
+                        mw->maximized = 1;
+                    }
+                }
+                else if (idx == 2) gui_close_window(rclick_win);
+            }
+            dirty = 1;
+        }
+        rclick_open = 0; dirty = 1;
     }
 
 done:
@@ -1350,31 +1589,84 @@ void gui_init(void) {
     gui_redraw();
 }
 
+/* Find the focused window that accepts text input (terminal = no draw_content callback) */
+static int focused_terminal(void) {
+    for (int i = order_count - 1; i >= 0; i--) {
+        int id = win_order[i];
+        if (windows[id].visible && windows[id].focused && !windows[id].draw_content)
+            return id;
+    }
+    return -1;
+}
+
 void gui_run(void) {
     uint32_t last_redraw = 0;
+    uint32_t last_clock = 0;
     while (1) {
         usb_hid_poll();
         mouse_poll();
         vbox_mouse_poll();
         handle_mouse();
+
         char key = keyboard_getchar();
-        /* Arrow keys move cursor (scancode: up=0x48 down=0x50 left=0x4B right=0x4D) */
-        /* Enter = left click, Esc = release */
-        if (key == 0x48) { int y = mouse_get_y() - 6; if (y < 0) y = 0; mouse_usb_update(0, -(mouse_get_y() - y), mouse_get_buttons()); }
-        else if (key == 0x50) { int y = mouse_get_y() + 6; if (y >= fb_height()) y = fb_height()-1; mouse_usb_update(0, y - mouse_get_y(), mouse_get_buttons()); }
-        else if (key == 0x4B) { int x = mouse_get_x() - 6; if (x < 0) x = 0; mouse_usb_update(-(mouse_get_x() - x), 0, mouse_get_buttons()); }
-        else if (key == 0x4D) { int x = mouse_get_x() + 6; if (x >= fb_width()) x = fb_width()-1; mouse_usb_update(x - mouse_get_x(), 0, mouse_get_buttons()); }
-        else if (key == '\n' || key == '\r') { mouse_usb_update(0, 0, 1); } /* enter = click */
-        else if (key == 0x1B) { mouse_usb_update(0, 0, 0); } /* esc = release */
-        else if (key == 0x3B) {
-            int id = gui_create_window("Terminal",
-                80 + (win_count * 20) % 200, 60 + (win_count * 20) % 150,
-                500, 320, 0);
-            gui_window_print(id, "darknode> _\n"); dirty = 1;
+        if (key) {
+            int term = focused_terminal();
+            if (term >= 0) {
+                /* Typing into the focused terminal window */
+                gui_window_t *w = &windows[term];
+                if (key == '\b') {
+                    /* Backspace — remove last char if not at prompt */
+                    if (w->text_len > 0 && w->textbuf[w->text_len - 1] != '\n'
+                        && w->textbuf[w->text_len - 1] != '#'
+                        && w->textbuf[w->text_len - 1] != ' ') {
+                        w->text_len--;
+                        w->textbuf[w->text_len] = '\0';
+                        dirty = 1;
+                    }
+                } else if (key == '\n') {
+                    /* Enter — add newline + new prompt */
+                    if (w->text_len < 4090) {
+                        w->textbuf[w->text_len++] = '\n';
+                        /* Echo a fake command response */
+                        const char *prompt = "root@darknode:~# ";
+                        int plen = 17;
+                        for (int i = 0; i < plen && w->text_len < 4090; i++)
+                            w->textbuf[w->text_len++] = prompt[i];
+                        w->textbuf[w->text_len] = '\0';
+                        dirty = 1;
+                    }
+                } else if (key >= 32 && key < 127) {
+                    /* Printable character */
+                    if (w->text_len < 4090) {
+                        w->textbuf[w->text_len++] = key;
+                        w->textbuf[w->text_len] = '\0';
+                        dirty = 1;
+                    }
+                }
+            } else {
+                /* No terminal focused — use keyboard for cursor control */
+                if (key == 0x3B) { /* F1 */
+                    int id = gui_create_window("Terminal",
+                        80 + (win_count * 20) % 200, 60 + (win_count * 20) % 150,
+                        540, 340, 0);
+                    gui_window_print(id,
+                        "Darknode OS v0.1.0 (tty1)\n"
+                        "root@darknode:~# ");
+                    dirty = 1;
+                }
+            }
         }
-        if (timer_get_ticks() - last_redraw >= 33) {
+
+        /* Auto-update clock every second */
+        uint32_t now = timer_get_ticks();
+        if (now - last_clock >= 1000) {
+            dirty = 1;
+            last_clock = now;
+        }
+
+        if (now - last_redraw >= 33) {
             gui_redraw();
-            last_redraw = timer_get_ticks();
+            last_redraw = now;
         }
     }
 }
