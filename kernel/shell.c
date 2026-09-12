@@ -628,7 +628,7 @@ void shell_init(void) {
 void shell_run(void) {
     prompt();
     while (1) {
-        char c = keyboard_getchar();
+        char c = keyboard_getchar_blocking();
         if (c == '\n') {
             console_putchar('\n');
             cmd_buf[cmd_len] = '\0';

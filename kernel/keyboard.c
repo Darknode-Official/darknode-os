@@ -70,3 +70,18 @@ char keyboard_getchar(void) {
     kb_tail = (kb_tail + 1) % KB_BUF_SIZE;
     return c;
 }
+
+char keyboard_getchar_blocking(void) {
+    while (!keyboard_has_key()) __asm__ volatile("hlt");
+    char c = kb_buf[kb_tail];
+    kb_tail = (kb_tail + 1) % KB_BUF_SIZE;
+    return c;
+}
+
+/* Return raw scancode (not translated to ASCII) — for arrow keys, F-keys etc */
+static volatile uint8_t last_scancode = 0;
+uint8_t keyboard_last_scancode(void) {
+    uint8_t sc = last_scancode;
+    last_scancode = 0;
+    return sc;
+}
