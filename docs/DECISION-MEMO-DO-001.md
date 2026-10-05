@@ -1,11 +1,13 @@
 # DO-001 — Decision Memo: What Darknode OS Is
 
 **Severity:** S0 (blocks everything downstream).
-**Status:** DRAFT — **UNSIGNED**. No Track A or Track B build work (DO-010
-through DO-016, and the Track A build spec) may begin until the owner signs this
-memo. This memo was prepared by an engineering agent from reproduced source
-evidence; the owner must make and sign the decision.
-**Date:** 2026-10-04.
+**Status:** **SIGNED — Track B** (owner, 2026-10-04). Downstream Track B work
+(DO-010..DO-016) is unblocked. The from-scratch kernel in this repository is
+KEPT as a separate research project under the working name **"Darknode
+Obsidian"** and is NOT the shipping product. This memo was prepared by an
+engineering agent from reproduced source evidence; the recommendation below was
+accepted by the owner.
+**Date prepared:** 2026-10-04. **Date signed:** 2026-10-04.
 
 ---
 
@@ -27,11 +29,11 @@ The name "Darknode OS" currently denotes two technically incompatible products:
    inheriting a real kernel, real hardware support, a real browser, a real
    userland, and the existing security-tool ecosystem. `[C]`
 
-A third fact sharpens the conflict: a separate working checkout of a repo also
-named `darknode-os` (remote `Darknode-Official/darknode-os`) contains **both** the
-from-scratch kernel **and** a Debian/Ubuntu QEMU builder in one tree. The two
-incompatible products are already commingled under one name in at least one
-place. `[C]`
+A third fact sharpens the conflict: an earlier working checkout of this repo
+(under the org's former name) contains **both** the from-scratch kernel **and** a
+Debian/Ubuntu QEMU builder in one tree. The two incompatible products are
+already commingled under one name in at least one place — which is exactly what
+Track B resolves. `[C]`
 
 These cannot both be "Darknode OS" without the description being false for one
 of them. A from-scratch kernel at this stage **cannot** host Chromium/Firefox or
@@ -119,29 +121,34 @@ Absent all three, Track B stands.
 
 | Field | Value |
 |---|---|
-| Recommended track | **B** (with the from-scratch kernel preserved under a research name; equivalently Track C if the kernel keeps the `darknode-os` name) |
-| Owner's chosen track | _______________ |
-| What happens to this kernel repo | _______________ |
-| Shipping product name | _______________ |
-| Signed (owner) | _______________ |
-| Date | _______________ |
+| Recommended track | **B** (from-scratch kernel preserved under a research name) |
+| Owner's chosen track | **B** |
+| What happens to this kernel repo | Kept as the research kernel, working name **"Darknode Obsidian"**; repositioned, not deleted; must not be called "Darknode OS" |
+| Shipping product name | **Darknode OS** (the Linux distribution) |
+| Signed (owner) | Owner (relayed via coordinator) |
+| Date | 2026-10-04 |
 
-**Until this memo is signed, DO-010..DO-016 (Track B build) and the Track A
-build spec are BLOCKED and must not begin.** The hygiene actions in DO-001 that
-apply regardless of track (honest README, de-committing build binaries,
-correcting the repo description) are *not* blocked and have been done on the
-`do-001-ground-truth` branch.
+**The memo is signed (Track B). DO-010..DO-016 are unblocked.** The DO-001
+hygiene that applies regardless of track (honest README, de-committed build
+binaries, corrected claims) was done on the `do-001-ground-truth` branch; this
+Track B repositioning of the kernel is on `track-b/kernel-positioning`. The
+Track B foundation artifacts (DO-010 image-build skeleton, DO-013 agent control
+plane + scope-escape tests, DO-014 hardening conformance check) are authored in
+the Linux-distro home — see that repo's `track-b/` subtree.
 
 ## 7. Clarifications the owner must resolve
 
-1. **Repo/path identity.** The engineering brief names
-   `/home/manav/projects/darknode-os` as this repo, but that local path is a
-   clone of `Darknode-Official/darknode-os` (a superset containing both the kernel
-   and a Debian builder), not `Darknode-Official/darknode-os`. This work was done
-   in a fresh clone of the official repo at
-   `/home/manav/projects/darknode-os-official`. The owner should confirm which
-   repository is canonical and reconcile the `Darknode-Official` checkout.
-2. **Kernel's name and fate** under the chosen track (fields above).
+1. **Repo/path identity.** The local path `/home/manav/projects/darknode-os`
+   holds an earlier superset checkout (kernel + Debian builder in one tree,
+   under the org's former name). This DO-001 work was done in a fresh clone of
+   the official repo at `/home/manav/projects/darknode-os-official`. The owner
+   should fold the two together so only the kernel (as "Darknode Obsidian")
+   lives here and the Debian builder lives in the Linux-distro home.
+2. **Kernel's research name.** "Darknode Obsidian" is a working name applied
+   here; the owner may choose a different research name — the only hard rule is
+   that it is not "Darknode OS".
 3. **Where prebuilt images live.** Build binaries have been de-committed locally
    (DO-001); the owner must publish them as release artifacts and push the
-   branch (the agent is forbidden from pushing or creating releases).
+   branches (the agent is forbidden from pushing or creating releases).
+4. **Shipping-distro home** (recommendation recorded in the Track B foundation):
+   a dedicated repo is recommended; staged in `darknode-app` for this run.

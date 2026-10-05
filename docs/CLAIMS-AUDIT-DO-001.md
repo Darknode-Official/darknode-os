@@ -27,20 +27,25 @@ under QEMU.
 | Desktop "Web Browser" | Presented as a browser (Chrome-style tab + address bar) but renders only a static painted "darknode.ai" marketing page; no HTML/CSS/JS engine, fetches nothing. It is a placeholder for an impossible dependency, not a browser. | `kernel/gui.c`, `draw_browser` |
 | Fake browser hero stats | The painted page shows "449K+ lines / 120+ tools / 6 engines / 34 modules" and "Security Operating System / the platform for ethical hacking" — these are the **Linux platform's / web platform's** numbers, displayed inside the from-scratch kernel, conflating the two incompatible products (the core DO-001 problem). | `kernel/gui.c:929-961` |
 
-## Recommended description (pending DO-001 sign-off)
+## Recommended description (DO-001 signed: Track B)
 
-Neutral wording that the current source fully supports:
+The owner has signed the DO-001 memo choosing **Track B**: the shipping
+"Darknode OS" is a Linux distribution, and this repository is the **separate
+from-scratch research kernel**, working name **"Darknode Obsidian"**. The
+security-OS branding and tooling move to the Linux-based shipping product; this
+repo must not be described as "Darknode OS".
 
-> "Darknode OS — a from-scratch 32-bit x86 research kernel written in C and
-> NASM assembly. Boots via GRUB (multiboot2) to a framebuffer GUI desktop under
-> QEMU. Includes a PS/2/USB input stack, PCI/ATA/AHCI/NIC drivers, an in-RAM
-> VFS, a cooperative scheduler, INT 0x80 syscalls, and a UDP/ICMP IPv4 network
-> stack (DHCP/DNS; no TCP). Pre-alpha; not a Linux distribution; no third-party
-> software or real web browser. Security tooling is **not** part of this kernel."
+Recommended GitHub description for this repo (every word supported by source):
 
-The final description depends on the Track chosen in
-`DECISION-MEMO-DO-001.md`. Under Track B the security-OS branding moves to the
-Linux-based shipping product and this repo is renamed to a research name; under
-Track A/C this repo keeps a research identity with a description like the above.
-Correcting the live GitHub description requires an owner action (the agent is
-restricted to local work and does not change the remote).
+> "Darknode Obsidian — a from-scratch 32-bit x86 research kernel written in C
+> and NASM assembly. Boots via GRUB (multiboot2) to a framebuffer GUI desktop
+> under QEMU. PS/2/USB input, PCI/ATA/AHCI/NIC drivers, an in-RAM VFS, a
+> cooperative scheduler, INT 0x80 syscalls, and a UDP/ICMP IPv4 network stack
+> (DHCP/DNS; no TCP). Pre-alpha research project; NOT the shipping Darknode OS,
+> NOT a Linux distribution; no third-party software or real web browser; no
+> security tooling in the kernel."
+
+Correcting the live GitHub repository name and description requires an owner
+action (the agent is restricted to local work and does not change the remote).
+Residual: until the owner renames/re-describes the remote, the public repo
+still reads "Darknode OS ... security tools".

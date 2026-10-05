@@ -1,11 +1,20 @@
-# Darknode OS (kernel)
+# Darknode Obsidian — research kernel
+
+> **This is NOT the shipping "Darknode OS".** Per the signed DO-001 decision
+> (Track B), the product that end users install — **Darknode OS** — is a
+> **Linux distribution** (custom compositor/shell/theme + an agentic security
+> stack). This repository is the **separate from-scratch research kernel**,
+> working name **"Darknode Obsidian"**. It is kept as a research / education
+> project and is **not** the shipping product. The two must never be described
+> as the same thing. (The research name is a working name the owner may change;
+> the hard rule is only that it is not called "Darknode OS".)
 
 **Status: pre-alpha research kernel, v0.1.0.** A from-scratch 32-bit x86
-operating system written in C and NASM assembly. It boots to a graphical
-desktop under the QEMU emulator. It is **not** a Linux distribution, **not**
-based on any existing OS, and **not** a daily-driver or production system. It
-cannot run Linux, Windows, or any third-party software, and it has no real web
-browser.
+operating system kernel written in C and NASM assembly. It boots to a graphical
+desktop under the QEMU emulator. It is **not** a Linux distribution, **not** the
+shipping Darknode OS, **not** based on any existing OS, and **not** a
+daily-driver or production system. It cannot run Linux, Windows, or any
+third-party software, and it has no real web browser.
 
 This README describes what the code in this repository actually does today,
 reproduced from source and verified by building and booting the kernel. Where a
