@@ -1,0 +1,47 @@
+#!/bin/busybox sh
+# Darknode OS — PID 1. This is the first userspace process the real Linux
+# kernel hands control to. It wires up the base system, then starts a shell.
+
+/bin/busybox --install -s /bin >/dev/null 2>&1
+
+# Core virtual filesystems
+mount -t proc     proc     /proc  2>/dev/null
+mount -t sysfs    sysfs    /sys   2>/dev/null
+mount -t devtmpfs devtmpfs /dev   2>/dev/null || mdev -s
+mount -t tmpfs    tmpfs    /tmp   2>/dev/null
+mount -t tmpfs    tmpfs    /run   2>/dev/null
+
+# Kernel log quiet on console; we print our own UI
+echo 1 > /proc/sys/kernel/printk 2>/dev/null
+
+hostname darknode
+export HOME=/root PATH=/bin:/sbin:/usr/bin:/usr/sbin TERM=linux
+
+# Loopback + best-effort DHCP on the first ethernet device (virtio-net in QEMU)
+ip link set lo up 2>/dev/null
+for IF in eth0 enp0s1 ens3; do
+  if ip link show "$IF" >/dev/null 2>&1; then
+    ip link set "$IF" up 2>/dev/null
+    udhcpc -i "$IF" -q -n -t 3 >/dev/null 2>&1 &
+    break
+  fi
+done
+
+clear 2>/dev/null
+cat /etc/banner 2>/dev/null
+
+# Automated self-test: boot with `darknode.selftest` on the kernel cmdline to
+# print a system summary and power off (used to verify a build boots cleanly).
+if grep -q 'darknode.selftest' /proc/cmdline 2>/dev/null; then
+  echo "=== DARKNODE OS SELF-TEST ==="
+  /usr/bin/darknode
+  echo "--- processes ---"; ps
+  echo "--- mounts ---"; mount
+  echo "=== SELF-TEST OK: userspace is live on $(uname -sr) ==="
+  sleep 1
+  poweroff -f
+fi
+
+# Hand off to an interactive login shell on this console.
+# setsid gives it a controlling tty so job control works.
+exec setsid cttyhack /bin/sh -l

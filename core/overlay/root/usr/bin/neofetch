@@ -1,0 +1,3 @@
+#!/bin/sh
+. /etc/os-release 2>/dev/null
+echo "$PRETTY_NAME | $(uname -sr) | $(grep -c ^processor /proc/cpuinfo) cpu | $(awk '/MemTotal/{printf "%dMB", $2/1024}' /proc/meminfo) ram | up $(cut -d. -f1 /proc/uptime)s"

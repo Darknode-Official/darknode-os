@@ -41,6 +41,7 @@ darknode-os/
 ├── launch.sh             # boot the VM under QEMU/KVM
 ├── export-vbox.sh        # import the disk into VirtualBox (virtio-scsi, auto-resize)
 ├── darknode-os.conf      # remembered base-OS choice (the "setting")
+├── core/                 # from-source core: mainline Linux 6.12 kernel + BusyBox + Darknode init (core/README.md)
 ├── cloud-init/
 │   ├── user-data         # the provisioner: desktop, tools, AI, branding, hardening
 │   └── meta-data         # NoCloud instance metadata
@@ -87,11 +88,13 @@ DARKNODE_BASE=debian DARKNODE_EDITION=slim ./build.sh
 
 Editions build to separate files (`darknode-os-<edition>.qcow2` / `seed-<edition>.iso`) so they don't clobber each other. Pass the edition to the launchers too: `./launch.sh slim`, `./export-vbox.sh netinstall`.
 
+**core** is different: not a cloud-image edition but the from-source kernel core — the mainline **Linux 6.12** kernel compiled from `torvalds/linux` source, a static BusyBox userland and a Darknode `init`. ~15 MB total, no base image, no cloud-init, boots to a Darknode shell in about 3 s under QEMU. It builds and boots on its own: `cd core && ./build.sh && ./run.sh -nographic` (`./run.sh -selftest` boots headless and asserts the system reached userspace). See [`core/README.md`](core/README.md).
+
 ## Installation
 
 ```
-git clone https://github.com/Darknode-Official/darknode-os
-cd darknode-os
+git clone https://github.com/Darknode-Official/darknode-os-distro
+cd darknode-os-distro
 ./build.sh debian full        # pick a base + edition; builds the disk + cloud-init seed
 ./launch.sh full              # QEMU/KVM   (or ./export-vbox.sh full for VirtualBox)
 ```

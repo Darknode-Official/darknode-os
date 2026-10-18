@@ -1,0 +1,15 @@
+#!/bin/sh
+echo
+echo "  Darknode OS - available commands"
+echo "  ================================"
+echo "  darknode     system summary and tour"
+echo "  neofetch     one-line system fingerprint"
+echo "  ps / top     real running processes"
+echo "  ip / ifconfig / netstat   networking"
+echo "  mount / df / free / lsmod   system state"
+echo "  vi / less / grep / sed / awk   editing and text"
+echo "  wget / nc / ping   network tools"
+echo "  poweroff     shut the machine down cleanly"
+echo
+echo "  Every applet is real BusyBox - run 'busybox --list' for all $(busybox --list 2>/dev/null | wc -l)."
+echo

@@ -1,0 +1,8 @@
+# Fetched sources and build artifacts - all reproducible via build.sh
+src/
+out/
+hosttools/
+debs/
+*.cpio.gz
+*.tar.*
+overlay/root/bin/busybox

@@ -1,0 +1,10 @@
+NAME="Darknode OS"
+PRETTY_NAME="Darknode OS 1.0 (from-source Linux)"
+ID=darknode
+ID_LIKE=linux
+VERSION="1.0"
+VERSION_ID=1.0
+BUILD_ID=obsidian-core
+HOME_URL="https://darknode.ai"
+DOCUMENTATION_URL="https://darknode.ai/docs"
+SUPPORT_URL="https://darknode.ai"
