@@ -91,6 +91,24 @@ pushd "$SRC/linux" >/dev/null
     --enable SERIAL_8250 --enable SERIAL_8250_CONSOLE \
     --enable VIRTIO --enable VIRTIO_PCI --enable VIRTIO_BLK --enable VIRTIO_NET \
     --enable EXT4_FS --enable TMPFS --enable NET --enable INET --enable PACKET
+  # KSPP (Kernel Self-Protection Project) hardening. Only options the stock
+  # toolchain supports are kept - `make olddefconfig` silently drops any that
+  # need a feature we don't have (e.g. gcc-plugin RANDSTRUCT/STACKLEAK), so this
+  # never fails the build, and run.sh -selftest proves the result still boots.
+  scripts/config \
+    --enable STACKPROTECTOR --enable STACKPROTECTOR_STRONG \
+    --enable STRICT_KERNEL_RWX --enable STRICT_MODULE_RWX --enable DEBUG_WX \
+    --enable RANDOMIZE_BASE --enable RANDOMIZE_MEMORY \
+    --enable SLAB_FREELIST_RANDOM --enable SLAB_FREELIST_HARDENED \
+    --enable SHUFFLE_PAGE_ALLOCATOR \
+    --enable HARDENED_USERCOPY --enable FORTIFY_SOURCE \
+    --enable INIT_ON_ALLOC_DEFAULT_ON --enable INIT_STACK_ALL_ZERO \
+    --enable VMAP_STACK --enable SCHED_STACK_END_CHECK \
+    --enable BUG_ON_DATA_CORRUPTION \
+    --enable STRICT_DEVMEM --enable IO_STRICT_DEVMEM \
+    --enable SECURITY_DMESG_RESTRICT --enable LEGACY_VSYSCALL_NONE \
+    --enable SYN_COOKIES \
+    --disable PROC_KCORE --disable LEGACY_PTYS --disable X86_VSYSCALL_EMULATION
   make olddefconfig >/dev/null
   make -j"$JOBS" bzImage
   cp arch/x86/boot/bzImage "$OUT/bzImage"
