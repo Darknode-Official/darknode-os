@@ -9,7 +9,17 @@ OUT="$HERE/out"
 [ -f "$OUT/bzImage" ] || { echo "No kernel yet - run ./build.sh first."; exit 1; }
 
 MODE="${1:-}"
+
+# Hardware acceleration when the host exposes /dev/kvm (near-native speed);
+# transparently falls back to TCG software emulation (e.g. in CI) otherwise.
+# Set DARKNODE_NO_KVM=1 to force software emulation.
+ACCEL=()
+if [ "${DARKNODE_NO_KVM:-}" != 1 ] && [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+  ACCEL=(-enable-kvm -cpu host)
+fi
+
 COMMON=(
+  "${ACCEL[@]}"
   -m 1024
   -smp 2
   -kernel "$OUT/bzImage"

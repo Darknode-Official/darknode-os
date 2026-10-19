@@ -1,0 +1,94 @@
+name: OS boot-verify
+
+# Two tiers:
+#   smoke  - fast static checks (shell syntax, shellcheck, branding, overlay
+#            completeness) on every push / PR that touches the core distro.
+#   boot   - the real thing: compile the mainline Linux kernel + BusyBox and
+#            boot the image headless in QEMU until it prints SELF-TEST OK.
+#            Expensive (~20-30 min), so it runs on demand and weekly rather
+#            than on every push. GitHub-hosted runners have no /dev/kvm, so the
+#            boot uses TCG software emulation (DARKNODE_NO_KVM=1).
+
+on:
+  push:
+    paths:
+      - 'core/**'
+      - '.github/workflows/boot-test.yml'
+  pull_request:
+    paths:
+      - 'core/**'
+      - '.github/workflows/boot-test.yml'
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC - catch upstream kernel/busybox drift
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Static smoke checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax (bash -n)
+        run: |
+          for f in core/build.sh core/run.sh build.sh export-vbox.sh launch.sh; do
+            if [ -f "$f" ]; then bash -n "$f" && echo "ok  $f"; fi
+          done
+
+      - name: ShellCheck (advisory)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          for f in core/build.sh core/run.sh; do
+            [ -f "$f" ] && shellcheck -s bash "$f" || true
+          done
+          for f in core/overlay/root/init core/overlay/root/etc/profile; do
+            [ -f "$f" ] && shellcheck -s sh "$f" || true
+          done
+
+      - name: Branding + self-test marker
+        run: |
+          set -e
+          # The brand is DARKNODE - fail on any stale "sentinel" a user would see.
+          if grep -rniq 'sentinel' core/overlay core/README.md; then
+            echo "FAIL: stale 'sentinel' branding:"; grep -rni 'sentinel' core/overlay core/README.md
+            exit 1
+          fi
+          grep -q 'VERSION=' core/overlay/root/etc/os-release
+          grep -q 'SELF-TEST OK' core/overlay/root/init
+          echo "branding + self-test marker OK"
+
+      - name: Overlay completeness
+        run: |
+          set -e
+          for f in core/overlay/root/init core/overlay/root/etc/banner core/overlay/root/etc/os-release; do
+            test -f "$f" && echo "present: $f"
+          done
+
+  boot:
+    name: QEMU boot-verify (full build)
+    needs: smoke
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build + QEMU deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential flex bison libelf-dev \
+            libssl-dev bc cpio xz-utils wget git qemu-system-x86
+
+      - name: Build (kernel + userland + initramfs)
+        working-directory: core
+        run: ./build.sh
+
+      - name: Boot-verify (headless self-test, TCG)
+        working-directory: core
+        env:
+          DARKNODE_NO_KVM: '1'   # GitHub-hosted runners have no /dev/kvm
+        run: ./run.sh -selftest
