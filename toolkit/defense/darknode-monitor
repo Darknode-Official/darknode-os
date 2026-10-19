@@ -103,10 +103,11 @@ cmd_alerts(){
 
 cmd_capture(){
   local iface="${1:-any}"; local output="${2:-$HOME/.darknode/capture-$(date +%s).pcap}"
+  mkdir -p "$(dirname "$output")"
   c "Packet capture: interface=$iface -> $output"
   y "Ctrl+C to stop"
   sudo tcpdump -i "$iface" -w "$output" -nn 2>&1
-  g "Capture saved: $output"
+  if [ -s "$output" ]; then g "Capture saved: $output"; else r "No packets captured (nothing written to $output)"; fi
 }
 
 usage(){

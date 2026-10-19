@@ -13,6 +13,7 @@ dim(){ printf '\e[2m%s\e[0m\n' "$*"; }
 
 cmd_learn(){
   local duration="${1:-60}"
+  case "$duration" in ''|*[!0-9]*) r "Duration must be a whole number of seconds"; return 1 ;; esac
   c "Learning Network Baseline (${duration} seconds)"
   echo ""
 
@@ -68,6 +69,7 @@ print(f'  DNS queries: {len(dns)}')
   # Cleanup temp files
   rm -f "$connections_file" "$dns_file" "$ports_file"
 
+  [ -s "$bl_file" ] || { r "Baseline was not written (analysis failed)"; return 1; }
   g "Baseline saved: $bl_file"
   dim "Next: darknode-baseline monitor"
 }

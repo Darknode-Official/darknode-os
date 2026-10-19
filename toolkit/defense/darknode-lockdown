@@ -35,7 +35,7 @@ cmd_activate(){
 
   # Step 2: Block all inbound connections except SSH from current session
   c "Step 2: Isolating network..."
-  local my_ip=$(echo "$SSH_CLIENT" 2>/dev/null | awk '{print $1}')
+  local my_ip=$(echo "${SSH_CLIENT:-}" | awk '{print $1}')
   sudo iptables -I INPUT 1 -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null
   [ -n "$my_ip" ] && sudo iptables -I INPUT 2 -s "$my_ip" -p tcp --dport 22 -j ACCEPT 2>/dev/null
   sudo iptables -A INPUT -j DROP 2>/dev/null
@@ -78,7 +78,7 @@ cmd_network_only(){
 
   echo '{"activated":"'$(ts)'","status":"network-locked"}' > "$STATE"
 
-  local my_ip=$(echo "$SSH_CLIENT" 2>/dev/null | awk '{print $1}')
+  local my_ip=$(echo "${SSH_CLIENT:-}" | awk '{print $1}')
   sudo iptables-save > "$DIR/iptables-backup.rules" 2>/dev/null
   sudo iptables -F 2>/dev/null
   sudo iptables -I INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT

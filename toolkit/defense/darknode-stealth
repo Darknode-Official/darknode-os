@@ -5,9 +5,12 @@ set -uo pipefail
 # theme + neutral wallpaper, or restore the Darknode dark look. Also a panic mode.
 S="$HOME/.config/darknode/stealth.state"; mkdir -p "$(dirname "$S")"
 set_theme(){ xfconf-query -c xsettings -p /Net/ThemeName -s "$1" 2>/dev/null; xfconf-query -c xfwm4 -p /general/theme -s "$1" 2>/dev/null; }
+stealth_on(){ set_theme "Adwaita"; xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace0/color-style -s 0 2>/dev/null; echo stealth > "$S"; echo "[+] stealth ON"; }
+stealth_off(){ set_theme "Adwaita-dark"; rm -f "$S"; echo "[+] stealth OFF"; }
 case "${1:-toggle}" in
-  on|toggle) set_theme "Adwaita"; xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace0/color-style -s 0 2>/dev/null; echo stealth > "$S"; echo "[+] stealth ON";;
-  off) set_theme "Adwaita-dark"; rm -f "$S"; echo "[+] stealth OFF";;
+  on) stealth_on;;
+  off) stealth_off;;
+  toggle) if [ -f "$S" ]; then stealth_off; else stealth_on; fi;;
   panic) xdotool key super+d 2>/dev/null || wmctrl -k on 2>/dev/null; set_theme "Adwaita"; echo "[+] panic";;
-  *) echo "usage: darknode-stealth on|off|panic";;
+  *) echo "usage: darknode-stealth on|off|toggle|panic";;
 esac

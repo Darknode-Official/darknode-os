@@ -37,7 +37,7 @@ cmd_toolkit(){
   c "Updating Darknode toolkit..."
   if [ -d /opt/darknode-os/.git ]; then
     cd /opt/darknode-os && sudo git pull --rebase
-    sudo find toolkit/ -name 'darknode-*' -type f -exec cp {} /usr/local/bin/ \; -exec chmod +x /usr/local/bin/{} \;
+    sudo find toolkit/ -name 'darknode-*' -type f -exec install -m 0755 {} /usr/local/bin/ \;
     echo "$(date -u) toolkit" >> "$DIR/history.log"
     g "  Toolkit updated. $(ls /usr/local/bin/darknode-* | wc -l) scripts installed."
   else

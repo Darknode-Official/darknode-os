@@ -29,6 +29,6 @@ table inet darknode_anon {
 }
 NFT
   echo "[*] verifying (2s)…"; sleep 2; leaktest; }
-stop(){ need_root stop; nft delete table inet darknode_anon 2>/dev/null; sysctl -q -w net.ipv6.conf.all.disable_ipv6=0; echo "[+] anon OFF (direct connection restored)"; }
+stop(){ need_root stop; nft delete table inet darknode_anon 2>/dev/null; sysctl -q -w net.ipv6.conf.all.disable_ipv6=0; sysctl -q -w net.ipv6.conf.default.disable_ipv6=0; echo "[+] anon OFF (direct connection restored)"; }
 newid(){ need_root newid; systemctl reload tor@default 2>/dev/null || systemctl restart tor; echo "[+] new Tor identity"; }
 case "${1:-status}" in start)start;; stop)stop;; status|test)leaktest;; newid|rotate)newid;; *)echo "usage: darknode-anon start|stop|status|newid";; esac

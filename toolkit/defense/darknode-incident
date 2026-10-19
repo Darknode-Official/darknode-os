@@ -23,19 +23,12 @@ cmd_new(){
   mkdir -p "$dir/evidence"
   echo "$id" > "$CURRENT"
 
-  cat > "$dir/incident.json" << JSON
-{
-  "id": "$id",
-  "title": "$title",
-  "severity": "unknown",
-  "status": "open",
-  "created": "$(ts)",
-  "assignee": "",
-  "timeline": [],
-  "evidence": [],
-  "notes": ""
-}
-JSON
+  DIR="$dir" ID="$id" TITLE="$title" CREATED="$(ts)" python3 -c "
+import json, os
+d={'id':os.environ['ID'],'title':os.environ['TITLE'],'severity':'unknown','status':'open',
+   'created':os.environ['CREATED'],'assignee':'','timeline':[],'evidence':[],'notes':''}
+with open(os.path.join(os.environ['DIR'],'incident.json'),'w') as f: json.dump(d,f,indent=2)
+" || { r "Failed to create incident"; rm -f "$CURRENT"; return 1; }
 
   echo "[$(ts)] Incident created: $title" > "$dir/timeline.log"
   g "Incident created: $id"
@@ -85,14 +78,18 @@ with open('$dir/incident.json','w') as f: json.dump(d,f,indent=2)
 cmd_assign(){
   local who="${1:?usage: darknode-incident assign <name/email>}"
   local dir; dir=$(_inc_dir) || return 1
-  python3 -c "
-import json
-with open('$dir/incident.json') as f: d=json.load(f)
-d['assignee']='$who'
-with open('$dir/incident.json','w') as f: json.dump(d,f,indent=2)
-" 2>/dev/null
-  echo "[$(ts)] Assigned to: $who" >> "$dir/timeline.log"
-  g "Assigned to: $who"
+  if DIR="$dir" WHO="$who" python3 -c "
+import json, os
+p=os.path.join(os.environ['DIR'],'incident.json')
+with open(p) as f: d=json.load(f)
+d['assignee']=os.environ['WHO']
+with open(p,'w') as f: json.dump(d,f,indent=2)
+"; then
+    echo "[$(ts)] Assigned to: $who" >> "$dir/timeline.log"
+    g "Assigned to: $who"
+  else
+    r "Failed to update incident (is incident.json intact?)"; return 1
+  fi
 }
 
 cmd_status(){
@@ -120,17 +117,21 @@ print(f\"Assignee: {d.get('assignee','unassigned')}\")
 cmd_close(){
   local reason="${1:-Resolved}"
   local dir; dir=$(_inc_dir) || return 1
-  python3 -c "
-import json
-with open('$dir/incident.json') as f: d=json.load(f)
+  if DIR="$dir" CLOSED="$(ts)" REASON="$reason" python3 -c "
+import json, os
+p=os.path.join(os.environ['DIR'],'incident.json')
+with open(p) as f: d=json.load(f)
 d['status']='closed'
-d['closed']='$(ts)'
-d['close_reason']='$reason'
-with open('$dir/incident.json','w') as f: json.dump(d,f,indent=2)
-" 2>/dev/null
-  echo "[$(ts)] Incident CLOSED: $reason" >> "$dir/timeline.log"
-  rm -f "$CURRENT"
-  g "Incident closed: $reason"
+d['closed']=os.environ['CLOSED']
+d['close_reason']=os.environ['REASON']
+with open(p,'w') as f: json.dump(d,f,indent=2)
+"; then
+    echo "[$(ts)] Incident CLOSED: $reason" >> "$dir/timeline.log"
+    rm -f "$CURRENT"
+    g "Incident closed: $reason"
+  else
+    r "Failed to close incident (is incident.json intact?)"; return 1
+  fi
 }
 
 cmd_export(){

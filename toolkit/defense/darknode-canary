@@ -137,6 +137,9 @@ CREDS
       g "  Slack canary token planted: ~/.slack_token"
       _register "token" "slack" "Slack canary token"
       ;;
+    *)
+      r "  Unknown token type: $type (expected aws, github or slack)"; return 1
+      ;;
   esac
 }
 
@@ -155,7 +158,7 @@ cmd_status(){
     dim "  No canaries deployed yet."
   fi
   echo ""
-  local monitors; monitors=$(pgrep -cf "inotifywait.*CANARY\|canary.*monitor" 2>/dev/null || echo 0)
+  local monitors; monitors=$(pgrep -cf "inotifywait.*CANARY\|canary.*monitor" 2>/dev/null) || monitors=0
   dim "  Active monitors: $monitors"
 }
 
