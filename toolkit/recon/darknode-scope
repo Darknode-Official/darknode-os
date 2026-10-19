@@ -22,7 +22,13 @@ def match(t, e):
     if not e or e.startswith('#'): return False
     if t == e or t.endswith('.' + e): return True
     try:
-        return ipaddress.ip_address(t) in ipaddress.ip_network(e, strict=False)
+        net = ipaddress.ip_network(e, strict=False)
+    except Exception:
+        return False  # e is a host/domain, not an IP range — handled above
+    try:
+        # the target may be a single IP or a CIDR range; in-scope only if it is
+        # fully contained in the authorized network (a wider range is refused).
+        return ipaddress.ip_network(t, strict=False).subnet_of(net)
     except Exception:
         return False
 sys.exit(0 if any(match(t, e) for e in lines) else 1)

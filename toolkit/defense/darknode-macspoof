@@ -3,7 +3,9 @@
 # Randomize (or restore) the MAC of an interface. Default: first non-lo iface.
 set -uo pipefail
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+command -v macchanger >/dev/null || { echo "[!] macchanger not installed (apt install macchanger)"; exit 1; }
 IF="${2:-$(ip -o link show | awk -F': ' '$2!="lo"{print $2; exit}')}"
+[ -n "$IF" ] || { echo "[!] no network interface found"; exit 1; }
 case "${1:-random}" in
   random) ip link set "$IF" down; macchanger -r "$IF"; ip link set "$IF" up; echo "[+] $IF randomized";;
   restore) ip link set "$IF" down; macchanger -p "$IF"; ip link set "$IF" up; echo "[+] $IF restored";;

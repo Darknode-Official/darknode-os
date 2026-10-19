@@ -23,8 +23,10 @@ engage(){
 
   # 0) snapshot current exposure for the after-report
   ss -tulnp 2>/dev/null > "$STATE/pre-listeners.txt"
-  # save the current ruleset so `lockout off` can restore it
-  nft list ruleset > "$STATE/pre-lockout.nft" 2>/dev/null || true
+  # save the current ruleset so `lockout off` can restore it — but ONLY if we
+  # aren't already engaged, or re-running `lockout on` would overwrite the real
+  # pre-lockout snapshot with the lockout ruleset itself (leaving no way back).
+  [ -f "$STATE/engaged" ] || nft list ruleset > "$STATE/pre-lockout.nft" 2>/dev/null || true
 
   say "${C_C}${C_B}» Firewall — drop all new inbound${C_0}"
   if command -v nft >/dev/null; then

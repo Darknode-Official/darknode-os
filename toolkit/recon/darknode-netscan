@@ -77,8 +77,8 @@ _summary(){
   [ -f "$f" ] || return
   echo ""
   c "=== Scan Summary ==="
-  local open=$(grep -c "open" "$f" 2>/dev/null || echo 0)
-  local filtered=$(grep -c "filtered" "$f" 2>/dev/null || echo 0)
+  local open; open=$(grep -c "open" "$f" 2>/dev/null); open=${open:-0}
+  local filtered; filtered=$(grep -c "filtered" "$f" 2>/dev/null); filtered=${filtered:-0}
   echo "  Open ports: $open"
   echo "  Filtered: $filtered"
   grep "open" "$f" 2>/dev/null | head -15 | while read -r line; do
@@ -103,7 +103,10 @@ usage(){
 
 EOF
 }
+# authorization guard — scanning subcommands refuse out-of-scope targets
+_scope(){ command -v darknode-scope >/dev/null 2>&1 || return 0; local t="$1"; case "$t" in *://*) t="${t#*://}"; t="${t%%/*}"; t="${t%%:*}";; esac; [ -n "$t" ] || return 0; darknode-scope guard "$t" || exit 3; }
 cmd="${1:-help}"; shift 2>/dev/null || true
+case "$cmd" in quick|full|vuln|stealth|os|udp) _scope "${1:-}" ;; esac
 case "$cmd" in
   quick)   cmd_quick "$@" ;;
   full)    cmd_full "$@" ;;

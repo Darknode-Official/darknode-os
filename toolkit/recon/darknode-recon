@@ -14,7 +14,7 @@ step(){ local label="$1"; shift; echo "  → $label"; { echo; echo "== $label ==
 command -v dig     >/dev/null && step "DNS"     dig +short "$T" ANY
 command -v host    >/dev/null && step "reverse" host "$T"
 command -v whois   >/dev/null && step "WHOIS"   whois "$T"
-step "nmap (top 200, versions)" nmap -Pn -T4 --top-ports 200 -sV "$T"
+command -v nmap >/dev/null && step "nmap (top 200, versions)" nmap -Pn -T4 --top-ports 200 -sV "$T"
 command -v whatweb >/dev/null && step "whatweb" whatweb -a1 "$T"
 command -v openssl >/dev/null && step "TLS cert" bash -c "echo | timeout 8 openssl s_client -connect '$T:443' -servername '$T' 2>/dev/null | openssl x509 -noout -subject -issuer -dates"
 

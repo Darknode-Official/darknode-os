@@ -40,7 +40,9 @@ cmd_check(){
   echo ""
   c "=== System Updates ==="
   if command -v apt >/dev/null 2>&1; then
-    local upgradable=$(apt list --upgradable 2>/dev/null | grep -c upgradable || echo 0)
+    # grep -c prints 0 AND exits 1 on no match; a `|| echo 0` would append a
+    # second line, breaking the integer test below. Just take grep's own count.
+    local upgradable; upgradable=$(apt list --upgradable 2>/dev/null | grep -c upgradable); upgradable=${upgradable:-0}
     [ "$upgradable" -le 0 ] && _ok "System up to date" || _warn "$upgradable packages need updating"
   fi
 
@@ -134,6 +136,7 @@ cmd_audit(){
 
 cmd_report(){
   c "Hardening Report"
+  mkdir -p "$HOME/.darknode"
   cmd_check 2>&1 | tee "$HOME/.darknode/harden-report-$(date +%Y%m%d).txt"
   g "Report saved: $HOME/.darknode/harden-report-$(date +%Y%m%d).txt"
 }
