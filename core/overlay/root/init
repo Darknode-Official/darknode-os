@@ -14,7 +14,7 @@ mount -t tmpfs    tmpfs    /run   2>/dev/null
 # Kernel log quiet on console; we print our own UI
 echo 1 > /proc/sys/kernel/printk 2>/dev/null
 
-hostname darknode
+hostname -F /etc/hostname 2>/dev/null || hostname darknode
 export HOME=/root PATH=/bin:/sbin:/usr/bin:/usr/sbin TERM=linux
 
 # Loopback + best-effort DHCP on the first ethernet device (virtio-net in QEMU)
@@ -49,5 +49,5 @@ fi
 # child forked by init (not the process-group leader), setsid succeeds without
 # re-forking, so this never spins.
 while : ; do
-  setsid cttyhack /bin/sh -l
+  setsid cttyhack /bin/sh -l || sleep 1
 done

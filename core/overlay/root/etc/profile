@@ -1,7 +1,13 @@
 # Darknode OS login shell environment
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 export PS1='\033[1;36mdarknode\033[0m:\033[1;34m\w\033[0m# '
-export PAGER=more
+export PAGER=less
+export HISTFILE=/root/.ash_history
+umask 022
+
+# 'help' is also an ash builtin (it lists shell builtins); an alias resolves
+# before builtin lookup, so this keeps our curated command list reachable.
+alias help=/usr/bin/help
 
 alias ll='ls -lah'
 alias l='ls -la'
@@ -14,5 +20,8 @@ alias cls='clear'
 alias ..='cd ..'
 alias ...='cd ../..'
 
-# Show the tour hint once per boot
-[ -f /run/.greeted ] || { echo "Kernel: $(uname -sr)   Uptime: $(cut -d. -f1 /proc/uptime)s   Memory: $(awk '/MemTotal/{printf "%d MB", $2/1024}' /proc/meminfo)"; echo; : > /run/.greeted; }
+# First login of this boot: a one-time system summary.
+[ -f /run/.greeted ] || { echo "Kernel: $(uname -sr)   Uptime: $(cut -d. -f1 /proc/uptime)s   Memory: $(awk '/MemTotal/{printf "%d MB", $2/1024}' /proc/meminfo)"; : > /run/.greeted; }
+# Every login: remind where to start (init's banner scrolls off after the first exit).
+echo "Type 'help' for the command list, or 'darknode' for a tour."
+echo
