@@ -41,7 +41,7 @@ cmd_search(){
     IFS='|' read -r name _ <<< "$entry"
     local file="$DIR/feeds/$name.txt"
     [ -f "$file" ] || continue
-    local hits=$(grep -ci "$query" "$file" 2>/dev/null || echo 0)
+    local hits; hits=$(grep -ci "$query" "$file" 2>/dev/null) || hits=0
     if [ "$hits" -gt 0 ]; then
       r "  FOUND in $name ($hits matches)"
       grep -i "$query" "$file" 2>/dev/null | head -3 | sed 's/^/    /'

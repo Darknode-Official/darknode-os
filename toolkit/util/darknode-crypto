@@ -159,16 +159,16 @@ cmd_xor(){
   local file="${2:?missing file}"
   local out="${file}.xor"
   c "XOR encrypt/decrypt (key: $key)"
-  python3 -c "
-import sys
-key = '$key'.encode()
-with open('$file', 'rb') as f:
+  KEY="$key" INFILE="$file" OUTFILE="$out" python3 -c "
+import os
+key = os.environ['KEY'].encode()
+with open(os.environ['INFILE'], 'rb') as f:
     data = f.read()
 result = bytes([b ^ key[i % len(key)] for i, b in enumerate(data)])
-with open('$out', 'wb') as f:
+with open(os.environ['OUTFILE'], 'wb') as f:
     f.write(result)
-print(f'Output: $out ({len(result)} bytes)')
-" 2>/dev/null
+print('Output: %s (%d bytes)' % (os.environ['OUTFILE'], len(result)))
+" || { r "XOR failed (check the input file exists and is readable)"; return 1; }
 }
 
 usage(){

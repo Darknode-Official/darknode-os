@@ -27,9 +27,9 @@ cmd_analyze(){
   if _has binwalk; then
     binwalk -E "$file" 2>/dev/null | tail -5
   else
-    python3 -c "
-import math,sys
-data=open('$file','rb').read()
+    FILE="$file" python3 -c "
+import math,sys,os
+data=open(os.environ['FILE'],'rb').read()
 if not data: sys.exit()
 freq=[0]*256
 for b in data: freq[b]+=1

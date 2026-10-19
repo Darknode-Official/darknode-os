@@ -42,7 +42,7 @@ cmd_aws(){
         else
           c "Scanning your buckets for public access..."
           aws s3api list-buckets --query 'Buckets[].Name' --output text 2>/dev/null | tr '\t' '\n' | while read -r b; do
-            acl=$(aws s3api get-bucket-acl --bucket "$b" 2>/dev/null | grep -c "AllUsers\|AuthenticatedUsers" || echo 0)
+            acl=$(aws s3api get-bucket-acl --bucket "$b" 2>/dev/null | grep -c "AllUsers\|AuthenticatedUsers")
             [ "$acl" -gt 0 ] && r "  PUBLIC: $b" || g "  private: $b"
           done
         fi

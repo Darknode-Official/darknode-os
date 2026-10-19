@@ -67,8 +67,9 @@ cmd_status(){
   echo "  Hours:    $(cat "$d/hours.txt")"
   echo "  Scope:    $(wc -l < "$d/scope.txt" 2>/dev/null || echo 0) targets"
   echo "  Findings: $(wc -l < "$d/findings.log" 2>/dev/null || echo 0)"
-  local crits=$(grep -c '|critical|' "$d/findings.log" 2>/dev/null || echo 0)
-  local highs=$(grep -c '|high|' "$d/findings.log" 2>/dev/null || echo 0)
+  local crits highs
+  crits=$(grep -c '|critical|' "$d/findings.log" 2>/dev/null) || crits=0
+  highs=$(grep -c '|high|' "$d/findings.log" 2>/dev/null) || highs=0
   [ "$crits" -gt 0 ] && r "  Critical: $crits"
   [ "$highs" -gt 0 ] && y "  High: $highs"
 }
