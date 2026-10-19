@@ -85,6 +85,7 @@ pushd "$SRC/linux" >/dev/null
   make x86_64_defconfig >/dev/null
   # Guarantee the pieces a headless, virtio QEMU boot needs.
   scripts/config \
+    --set-str LOCALVERSION "-darknode" \
     --enable BLK_DEV_INITRD \
     --enable DEVTMPFS --enable DEVTMPFS_MOUNT \
     --enable SERIAL_8250 --enable SERIAL_8250_CONSOLE \

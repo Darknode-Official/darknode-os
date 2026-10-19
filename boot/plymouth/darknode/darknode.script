@@ -3,7 +3,7 @@ Window.SetBackgroundTopColor(0.02, 0.03, 0.05);
 Window.SetBackgroundBottomColor(0.02, 0.03, 0.05);
 
 # Logo text
-logo.image = Image.Text(">_ SENTINEL OS", 0, 0.92, 1.0, 1, "Mono");
+logo.image = Image.Text(">_ DARKNODE OS", 0, 0.92, 1.0, 1, "Mono");
 logo.sprite = Sprite(logo.image);
 logo.sprite.SetX(Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
 logo.sprite.SetY(Window.GetHeight() / 2 - 60);
