@@ -125,6 +125,19 @@ write_files:
         *)          WANT_GUI=1; WANT_APP=1; WANT_HEAVY=1 ;;
       esac
       echo "== Darknode edition: $EDITION  (gui=$WANT_GUI app=$WANT_APP heavy=$WANT_HEAVY) =="
+      # Rebrand the OS identity to Darknode OS 1.0 (display fields only). This makes
+      # os-release, neofetch and the console/SSH login banner say Darknode instead of
+      # the apt base. ID / ID_LIKE / VERSION_ID / codenames are kept untouched so apt
+      # and base-distro tooling still resolve correctly. Runs after family detection,
+      # which already captured ID above, so this can't affect it.
+      if [ -f /etc/os-release ]; then
+        sed -i -E 's/^NAME=.*/NAME="Darknode OS"/; s/^PRETTY_NAME=.*/PRETTY_NAME="Darknode OS 1.0"/; s#^HOME_URL=.*#HOME_URL="https://darknode.ai"#' /etc/os-release
+        grep -q '^NAME='        /etc/os-release || echo 'NAME="Darknode OS"'        >> /etc/os-release
+        grep -q '^PRETTY_NAME=' /etc/os-release || echo 'PRETTY_NAME="Darknode OS 1.0"' >> /etc/os-release
+        grep -q '^VARIANT='     /etc/os-release || echo 'VARIANT="Darknode OS 1.0"'     >> /etc/os-release
+      fi
+      { echo "Darknode OS 1.0"; echo; } > /etc/issue    2>/dev/null || true
+      echo "Darknode OS 1.0"            > /etc/issue.net 2>/dev/null || true
       if [ "$FAMILY" = ubuntu ]; then
         # Ubuntu: make sure universe/multiverse are on (most tools live there)
         (command -v add-apt-repository >/dev/null && add-apt-repository -y universe multiverse) 2>/dev/null || \
@@ -144,8 +157,10 @@ write_files:
         apt-get install -y linux-image-amd64 && { apt-get purge -y linux-image-cloud-amd64 2>/dev/null || true; }
       fi
       update-grub 2>/dev/null || true
-      # Clone darknode-os repo for boot themes, desktop entries, wallpapers, and toolkit
-      [ -d /opt/darknode-os ] || timeout 300 git clone --depth 1 https://github.com/Darknode-Official/darknode-os /opt/darknode-os 2>/dev/null || true
+      # Clone the darknode-os-distro repo (boot themes, desktop entries, wallpapers,
+      # toolkit). NOTE: this is darknode-os-distro, NOT darknode-os (which is the
+      # from-scratch research kernel and has none of this content).
+      [ -d /opt/darknode-os ] || timeout 300 git clone --depth 1 https://github.com/Darknode-Official/darknode-os-distro /opt/darknode-os 2>/dev/null || true
       # Copy wallpapers from local clone (faster than downloading each one)
       if [ -d /opt/darknode-os/toolkit/wallpapers ]; then
         install -d /usr/share/backgrounds/darknode
@@ -304,7 +319,7 @@ write_files:
                  darknode-anon darknode-macspoof darknode-detonate darknode-stealth \
                  darknode-ask darknode-triage darknode-engage darknode-arsenal \
                  darknode-tweaks darknode-lockout darknode-tools gen-darknode-menu darknode-desktop-setup; do
-          curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os/main/toolkit/$s" -o "/usr/local/bin/$s" && chmod +x "/usr/local/bin/$s" || echo "TOOLKIT-SKIP $s"
+          curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os-distro/main/toolkit/$s" -o "/usr/local/bin/$s" && chmod +x "/usr/local/bin/$s" || echo "TOOLKIT-SKIP $s"
         done
       fi
       # `/lockout` shorthand for the defensive lockdown command
@@ -326,19 +341,19 @@ write_files:
       if [ "$WANT_GUI" = 1 ]; then
       # ===== desktop-only (slim & full): app menu, wallpapers, browser, login theme, guest additions =====
       gen-darknode-menu 2>/dev/null || true
-      install -d /usr/share/backgrounds; curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os/main/toolkit/darknode-wallpaper.png" -o /usr/share/backgrounds/darknode-wallpaper.png 2>/dev/null || true
+      install -d /usr/share/backgrounds; curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os-distro/main/toolkit/darknode-wallpaper.png" -o /usr/share/backgrounds/darknode-wallpaper.png 2>/dev/null || true
       # Darknode wallpaper set (50 unique + classic) + the switcher/cycler tool.
       # Fetch the manifest, then pull each listed image — no hardcoded filenames.
       install -d /usr/share/backgrounds/darknode
-      WPBASE="https://raw.githubusercontent.com/Darknode-Official/darknode-os/main/toolkit/wallpapers"
+      WPBASE="https://raw.githubusercontent.com/Darknode-Official/darknode-os-distro/main/toolkit/wallpapers"
       if curl -fsSL "$WPBASE/manifest.txt" -o /tmp/wp-manifest.txt 2>/dev/null; then
         while read -r wp; do [ -n "$wp" ] || continue
           curl -fsSL "$WPBASE/$wp" -o "/usr/share/backgrounds/darknode/$wp" 2>/dev/null || echo "WALL-SKIP $wp"
         done < /tmp/wp-manifest.txt
       fi
-      curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os/main/toolkit/darknode-wallpaper" -o /usr/local/bin/darknode-wallpaper && chmod +x /usr/local/bin/darknode-wallpaper 2>/dev/null || true
-      install -d /usr/share/pixmaps; curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os/main/toolkit/google-icon.png" -o /usr/share/pixmaps/darknode-google.png 2>/dev/null || true
-      curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os/main/toolkit/darknode-menu.png" -o /usr/share/pixmaps/darknode-menu.png 2>/dev/null || true
+      curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os-distro/main/toolkit/darknode-wallpaper" -o /usr/local/bin/darknode-wallpaper && chmod +x /usr/local/bin/darknode-wallpaper 2>/dev/null || true
+      install -d /usr/share/pixmaps; curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os-distro/main/toolkit/google-icon.png" -o /usr/share/pixmaps/darknode-google.png 2>/dev/null || true
+      curl -fsSL "https://raw.githubusercontent.com/Darknode-Official/darknode-os-distro/main/toolkit/darknode-menu.png" -o /usr/share/pixmaps/darknode-menu.png 2>/dev/null || true
       # Browser = Google Chrome (Google's own browser: Google homepage, search and
       # new-tab out of the box). Installed from Google's apt repo; set as the default.
       curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg 2>/dev/null || true
