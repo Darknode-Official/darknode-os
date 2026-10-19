@@ -7,6 +7,12 @@ alias ll='ls -lah'
 alias l='ls -la'
 alias ipa='ip -o addr | awk '"'"'{printf "%-10s %-5s %s\n", $2, $3, $4}'"'"''
 alias ports='netstat -tulpn 2>/dev/null'
+alias grep='grep --color=auto'
+alias df='df -h'
+alias free='free -m'
+alias cls='clear'
+alias ..='cd ..'
+alias ...='cd ../..'
 
 # Show the tour hint once per boot
 [ -f /run/.greeted ] || { echo "Kernel: $(uname -sr)   Uptime: $(cut -d. -f1 /proc/uptime)s   Memory: $(awk '/MemTotal/{printf "%d MB", $2/1024}' /proc/meminfo)"; echo; : > /run/.greeted; }
