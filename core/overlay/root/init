@@ -42,6 +42,12 @@ if grep -q 'darknode.selftest' /proc/cmdline 2>/dev/null; then
   poweroff -f
 fi
 
-# Hand off to an interactive login shell on this console.
-# setsid gives it a controlling tty so job control works.
-exec setsid cttyhack /bin/sh -l
+# Hand off to an interactive login shell on this console. setsid gives it a
+# controlling tty so job control works. Respawn it in a loop (no `exec`): init
+# must stay PID 1, so an accidental `exit`/Ctrl-D drops back to a fresh login
+# instead of killing init and panicking the kernel. Because the shell runs in a
+# child forked by init (not the process-group leader), setsid succeeds without
+# re-forking, so this never spins.
+while : ; do
+  setsid cttyhack /bin/sh -l
+done

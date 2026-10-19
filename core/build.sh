@@ -22,7 +22,7 @@ mkdir -p "$SRC" "$OUT"
 
 # git does not track empty directories: recreate the overlay's mount points and
 # bin dirs so a fresh clone packs a complete root (init mounts proc/sys/dev/tmp/run).
-mkdir -p "$OVERLAY"/{bin,sbin,etc,proc,sys,dev,tmp,root,run,usr/bin,usr/sbin}
+mkdir -p "$OVERLAY"/{bin,sbin,etc,proc,sys,dev,tmp,root,run,usr/bin,usr/sbin,usr/share/udhcpc}
 chmod 1777 "$OVERLAY/tmp"
 
 # Rootless host tools: if flex/bison/m4 or the libelf headers are missing and
