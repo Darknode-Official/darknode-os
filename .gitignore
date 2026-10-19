@@ -8,3 +8,6 @@
 *.raw
 disk.raw
 base-*.qcow2
+
+# internal AI build-session transcripts (local only)
+.nexus/

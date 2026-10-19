@@ -77,7 +77,7 @@ Pick how much ships — every edition self-provisions on first boot:
 |---|---|---|---|
 | **netinstall** | ~12 GB | none (terminal only) | Core CLI security stack + Nexus AI agent + local models. Boots to a console with tty1 autologin. Smallest & fastest. |
 | **slim** | ~20 GB | XFCE desktop | Full branded desktop + Nexus + the CLI toolset, **minus** Metasploit, SecLists, Exploit-DB, Docker and the cockpit app. |
-| **full** | ~30 GB | XFCE desktop | Everything: desktop, cockpit app, Metasploit, SecLists, Exploit-DB, Docker, autonomous AI recon, honeypot — 80+ tools. |
+| **full** | ~30 GB | XFCE desktop | Everything: desktop, cockpit app, Metasploit, SecLists, Exploit-DB, Docker, autonomous AI recon, honeypot — 177 tools. |
 
 ```
 ./build.sh debian netinstall     # base + edition (default edition is full)
