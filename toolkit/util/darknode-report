@@ -21,7 +21,10 @@ _projdir(){ local p; p=$(_active) || return 1; echo "$REPORTS_DIR/$p"; }
 
 cmd_init(){
   local name="${1:?usage: darknode-report init <project-name>}"
-  name=$(echo "$name" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
+  # Slugify to a safe set: the name becomes a directory AND is written into meta.json, so a stray
+  # quote/slash/.. would corrupt the JSON or escape REPORTS_DIR.
+  name=$(echo "$name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9._-')
+  case "$name" in *[a-z0-9]*) : ;; *) r "Project name must contain a letter or digit"; return 1 ;; esac
   local dir="$REPORTS_DIR/$name"
   mkdir -p "$dir/screenshots" "$dir/findings"
   echo "$name" > "$ACTIVE_FILE"
