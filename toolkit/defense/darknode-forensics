@@ -34,7 +34,7 @@ cmd_memory(){
     local out="$FORENSICS_DIR/memory-$(date +%Y%m%d-%H%M%S).raw"
     if command -v avml >/dev/null 2>&1; then
       sudo avml "$out" 2>&1
-    elif [ -d /proc/kcore ]; then
+    else
       y "For best results, use LiME:"
       echo "  sudo insmod lime.ko 'path=$out format=lime'"
       echo ""

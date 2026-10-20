@@ -158,7 +158,7 @@ cmd_status(){
     dim "  No canaries deployed yet."
   fi
   echo ""
-  local monitors; monitors=$(pgrep -cf "inotifywait.*CANARY\|canary.*monitor" 2>/dev/null) || monitors=0
+  local monitors; monitors=$(pgrep -cf "inotifywait.*CANARY|canary.*monitor" 2>/dev/null) || monitors=0
   dim "  Active monitors: $monitors"
 }
 

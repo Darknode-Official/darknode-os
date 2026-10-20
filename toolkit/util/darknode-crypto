@@ -66,7 +66,7 @@ cmd_encode(){
   case "$method" in
     base64|b64)  echo -n "$data" | base64 ;;
     hex)         echo -n "$data" | xxd -p ;;
-    url)         python3 -c "import urllib.parse; print(urllib.parse.quote('$data'))" 2>/dev/null ;;
+    url)         DATA="$data" python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["DATA"]))' 2>/dev/null ;;
     rot13)       echo "$data" | tr 'A-Za-z' 'N-ZA-Mn-za-m' ;;
     binary|bin)  echo -n "$data" | xxd -b | awk '{for(i=2;i<=7;i++)printf $i" "; print ""}' ;;
     *)           r "Unknown: $method. Use: base64, hex, url, rot13, binary" ;;
@@ -80,7 +80,7 @@ cmd_decode(){
   case "$method" in
     base64|b64)  echo "$data" | base64 -d 2>/dev/null ;;
     hex)         echo "$data" | xxd -r -p ;;
-    url)         python3 -c "import urllib.parse; print(urllib.parse.unquote('$data'))" 2>/dev/null ;;
+    url)         DATA="$data" python3 -c 'import os,urllib.parse; print(urllib.parse.unquote(os.environ["DATA"]))' 2>/dev/null ;;
     rot13)       echo "$data" | tr 'A-Za-z' 'N-ZA-Mn-za-m' ;;
     *)           r "Unknown: $method. Use: base64, hex, url, rot13" ;;
   esac

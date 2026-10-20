@@ -305,7 +305,7 @@ write_files:
       # Darknode toolkit — adopted-and-improved distro features + unique AI tools
       # Install all toolkit scripts from the local clone (resolves symlinks properly)
       if [ -d /opt/darknode-os/toolkit ]; then
-        find /opt/darknode-os/toolkit -name 'darknode-*' -type f | while read -r src; do
+        find /opt/darknode-os/toolkit -name 'darknode-*' -type f ! -name '*.png' | while read -r src; do
           name=$(basename "$src")
           cp "$src" "/usr/local/bin/$name" && chmod +x "/usr/local/bin/$name"
         done
