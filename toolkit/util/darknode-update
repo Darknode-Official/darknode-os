@@ -18,7 +18,9 @@ cmd_check(){
   if [ -d /opt/darknode-os/.git ]; then
     cd /opt/darknode-os && git fetch origin 2>/dev/null
     local behind=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "?")
-    [ "$behind" -gt 0 ] && y "    $behind commits behind" || g "    Up to date"
+    if [ "$behind" = "?" ]; then dim "    (couldn't compare to origin/main)"
+    elif [ "$behind" -gt 0 ]; then y "    $behind commits behind"
+    else g "    Up to date"; fi
   else
     dim "    Not installed from git"
   fi
@@ -26,7 +28,9 @@ cmd_check(){
   if [ -d /opt/darknode-cli/.git ]; then
     cd /opt/darknode-cli && git fetch origin 2>/dev/null
     local behind=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "?")
-    [ "$behind" -gt 0 ] && y "    $behind commits behind" || g "    Up to date"
+    if [ "$behind" = "?" ]; then dim "    (couldn't compare to origin/main)"
+    elif [ "$behind" -gt 0 ]; then y "    $behind commits behind"
+    else g "    Up to date"; fi
   else
     dim "    Not installed from git"
   fi

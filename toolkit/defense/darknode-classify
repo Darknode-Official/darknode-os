@@ -84,9 +84,9 @@ cmd_entropy(){
   local file="${1:?usage: darknode-classify entropy <file>}"
   [ -f "$file" ] || { r "File not found"; return 1; }
   local entropy
-  entropy=$(python3 -c "
-import math,sys
-data=open('$file','rb').read()
+  entropy=$(FILE="$file" python3 -c "
+import math,sys,os
+data=open(os.environ['FILE'],'rb').read()
 if not data: print('0.0'); sys.exit()
 freq={}
 for b in data: freq[b]=freq.get(b,0)+1

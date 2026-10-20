@@ -90,7 +90,9 @@ cmd_check(){
 
     # Compare: modified files (hash changed)
     while IFS=' ' read -r old_hash old_perms old_owner old_size old_file; do
-      local new_line=$(grep " ${old_file}$" "$current" 2>/dev/null)
+      # Compare the path as a literal field, not a regex: a watched name
+      # containing [ ] * \ . would otherwise mis-match and raise false alerts.
+      local new_line=$(awk -v p="$old_file" '{path=$0; sub(/^([^ ]+ ){4}/,"",path)} path==p {print; exit}' "$current")
       if [ -z "$new_line" ]; then
         r "    DELETED: $old_file"
         echo "DELETED $old_file" >> "$alert_file"
@@ -113,7 +115,7 @@ cmd_check(){
 
     # Check for new files
     while IFS=' ' read -r new_hash new_perms new_owner new_size new_file; do
-      if ! grep -q " ${new_file}$" "$baseline" 2>/dev/null; then
+      if ! awk -v p="$new_file" '{path=$0; sub(/^([^ ]+ ){4}/,"",path)} path==p{f=1} END{exit !f}' "$baseline"; then
         y "    NEW FILE: $new_file ($new_perms, ${new_size}B)"
         echo "NEW $new_file perms=$new_perms size=$new_size" >> "$alert_file"
         total_alerts=$((total_alerts+1))
