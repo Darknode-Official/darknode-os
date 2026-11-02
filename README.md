@@ -93,8 +93,8 @@ Editions build to separate files (`darknode-os-<edition>.qcow2` / `seed-<edition
 ## Installation
 
 ```
-git clone https://github.com/Darknode-Official/darknode-os-distro
-cd darknode-os-distro
+git clone https://github.com/Darknode-Official/darknode-os
+cd darknode-os
 ./build.sh debian full        # pick a base + edition; builds the disk + cloud-init seed
 ./launch.sh full              # QEMU/KVM   (or ./export-vbox.sh full for VirtualBox)
 ```

@@ -2,6 +2,7 @@
 # darknode-triage — AI target triage — quick recon chain plus a summary and next steps
 # AI target triage: run a quick recon chain against a target and get an AI summary + next steps.
 set -uo pipefail
+case "${1:-}" in -h|--help) echo "usage: darknode-triage <ip|domain>"; echo "  quick recon chain against a target, then an AI summary and next steps"; exit 0;; esac
 T="${1:-}"; [ -n "$T" ] || { echo "usage: darknode-triage <ip|domain>"; exit 1; }
 command -v darknode-scope >/dev/null && { darknode-scope guard "$T" || exit 3; }
 OUT="$(mktemp -d)"

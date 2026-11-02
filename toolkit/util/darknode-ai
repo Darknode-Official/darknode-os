@@ -11,6 +11,7 @@
 set -uo pipefail
 SYS="You are Darknode, an expert offensive-security assistant on a Debian pentest workstation. Be precise, concrete and safe. Assume the operator is authorized to test the systems discussed."
 STREAM=1
+case "${1:-}" in -h|--help) echo "usage: darknode-ai [-s system] [-q] <prompt>   (or pipe context in)"; echo "  shared AI engine: local Ollama by default, cloud automatically if a key is set"; exit 0;; esac
 while getopts "s:q" o; do case "$o" in s) SYS="$OPTARG";; q) STREAM=0;; esac; done
 shift $((OPTIND-1))
 PROMPT="$*"

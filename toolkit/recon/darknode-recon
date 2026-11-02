@@ -2,6 +2,7 @@
 # darknode-recon — scoped recon chain that yields AI-prioritised findings and next steps
 # Chains DNS/WHOIS/nmap/whatweb/TLS into a workspace and hands the whole picture to the AI.
 set -uo pipefail
+case "${1:-}" in -h|--help) echo "usage: darknode-recon <ip|domain>"; echo "  scoped recon chain (DNS/WHOIS/nmap/whatweb/TLS) with AI-prioritised findings"; exit 0;; esac
 T="${1:-}"; [ -n "$T" ] || { echo "usage: darknode-recon <ip|domain>"; exit 1; }
 # authorization guard — refuse out-of-scope targets
 command -v darknode-scope >/dev/null && { darknode-scope guard "$T" || exit 3; }
