@@ -44,7 +44,8 @@ write_files:
       ##     ## ######### ##   ##   ##  ##   ##  #### ##     ## ##     ## ##
       ##     ## ##     ## ##    ##  ##   ##  ##   ### ##     ## ##     ## ##
       ########  ##     ## ##     ## ##    ## ##    ##  #######  ########  ########
-        Darknode OS · agentic security workstation · `darknode nexus` / Autopilot
+        Darknode OS — security workstation
+        Run 'darknode-tools' to explore the toolkit, 'darknode-ask' for help.
 
   # The Darknode app is optional (in the menu / on the desktop) — it does NOT
   # auto-launch. The VM's UI is its own branded XFCE desktop. This autostart only

@@ -1,50 +1,25 @@
 #!/usr/bin/env bash
-# darknode-greeting — Darknode OS terminal greeting shown on each new shell
-# Darknode OS terminal greeting — shows on new terminal.
+# darknode-greeting — Darknode OS terminal greeting shown on each new shell.
 # Must NEVER error or produce extra output — runs in .bashrc on every shell.
 
-T='\e[38;2;0;234;255m'   # teal
-P='\e[38;2;176;38;255m'  # purple
-D='\e[2m'                 # dim
-R='\e[0m'                 # reset
+C='\e[36m'    # accent (cyan)
+D='\e[2m'     # dim
+R='\e[0m'     # reset
 
-echo ""
-printf "${T}  ███████${P}███████${T}███╗   ██${P}████████${T}██╗${P}███╗   ██${T}███████${P}██╗     ${R}\n"
-printf "${T}  ██╔════${P}██╔════${T}████╗  ██${P}╚══██╔══${T}██║${P}████╗  ██${T}██╔════${P}██║     ${R}\n"
-printf "${T}  █████  ${P}█████  ${T}██ ██  ██${P}   ██   ${T}██║${P}██ ██  ██${T}█████  ${P}██║     ${R}\n"
-printf "${T}  ██╔══  ${P}██╔══  ${T}██  ██ ██${P}   ██   ${T}██║${P}██  ██ ██${T}██╔══  ${P}██║     ${R}\n"
-printf "${T}  ███████${P}███████${T}██   ████${P}   ██   ${T}██║${P}██   ████${T}███████${P}███████ ${R}\n"
-printf "  ${D}>_ AI-powered security workstation${R}\n"
-echo ""
+# System info — all with fallbacks, no unset-var errors.
+. /etc/os-release 2>/dev/null
+cpu=$(grep 'model name' /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs 2>/dev/null | cut -c1-40)
+ram=$(free -h 2>/dev/null | awk '/^Mem:/{print $3 "/" $2}')
+disk=$(df -h / 2>/dev/null | awk 'NR==2{print $3 "/" $2}')
+ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+up=$(uptime -p 2>/dev/null | sed 's/up //')
 
-# System info — all with fallbacks, no unset var errors
-cpu=$(grep 'model name' /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs 2>/dev/null | cut -c1-40 || echo "unknown")
-ram=$(free -h 2>/dev/null | awk '/^Mem:/{print $3 "/" $2}' || echo "?")
-disk=$(df -h / 2>/dev/null | awk 'NR==2{print $3 "/" $2}' || echo "?")
-ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "offline")
-up=$(uptime -p 2>/dev/null | sed 's/up //' || echo "?")
-
-printf "  ${D}cpu${R}  %s\n" "${cpu:-unknown}"
-printf "  ${D}mem${R}  %s    ${D}disk${R}  %s    ${D}up${R}  %s\n" "${ram:-?}" "${disk:-?}" "${up:-?}"
-printf "  ${D}ip${R}   %s\n" "${ip:-offline}"
-echo ""
-
-# Random quote
-quotes=(
-  "The quieter you become, the more you can hear."
-  "Hack the planet."
-  "There is no patch for human stupidity."
-  "Every system has a vulnerability. Find it."
-  "Knowledge is power."
-  "Trust, but verify. Then verify again."
-  "The best defense is a good offense."
-  "Stay curious. Stay dangerous."
-  "In the world of ones and zeros, you are the variable."
-  "root@reality:~# whoami"
-)
-idx=$((RANDOM % ${#quotes[@]}))
-printf "  ${D}\"%s\"${R}\n" "${quotes[$idx]}"
-echo ""
-
-printf "  ${D}tip${R}  run ${T}darknode-tools${R} ${D}to explore the toolkit · ${T}darknode-ask${R} ${D}for natural-language commands${R}\n"
-echo ""
+# Version from the branded PRETTY_NAME ("Darknode OS 1.0"); base VERSION_ID is
+# left untouched by the rebrand, so don't use it here.
+ver=$(printf '%s' "${PRETTY_NAME:-}" | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
+printf "\n  ${C}Darknode OS${R} ${D}%s${R}   security workstation\n\n" "${ver:-1.0}"
+printf "  ${D}host${R}  %s\n" "$(hostname 2>/dev/null)"
+printf "  ${D}cpu${R}   %s\n" "${cpu:-unknown}"
+printf "  ${D}mem${R}   %s    ${D}disk${R}  %s    ${D}up${R}  %s\n" "${ram:-?}" "${disk:-?}" "${up:-?}"
+printf "  ${D}ip${R}    %s\n\n" "${ip:-offline}"
+printf "  Run ${C}darknode-tools${R} to explore the toolkit, ${C}darknode-ask${R} for help.\n\n"
