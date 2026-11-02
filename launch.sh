@@ -16,9 +16,15 @@ SEED="seed-${BASE}-${EDITION}.iso"
 RAM="${DARKNODE_RAM:-4096}"
 CPUS="${DARKNODE_CPUS:-2}"
 
-[ -f "$DISK" ] || { echo "no $DISK — run ./build.sh '$BASE $EDITION' first"; exit 1; }
+[ -f "$DISK" ] || { echo "error: $DISK not found — run ./build.sh $BASE $EDITION first"; exit 1; }
 
-ACCEL=(); [ -w /dev/kvm ] && ACCEL=(-enable-kvm -cpu host) || echo "note: /dev/kvm not writable — running without KVM (slower). Add yourself to the 'kvm' group to speed it up."
+ACCEL=()
+if [ -w /dev/kvm ]; then
+  ACCEL=(-enable-kvm -cpu host)
+else
+  echo "note: /dev/kvm not writable — running without KVM (slower)."
+  echo "      add yourself to the 'kvm' group to enable acceleration."
+fi
 
 SEED_ARGS=(); [ -f "$SEED" ] && SEED_ARGS=(-drive file="$SEED",format=raw,if=virtio,readonly=on)
 

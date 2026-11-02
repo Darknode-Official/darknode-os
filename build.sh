@@ -120,8 +120,14 @@ rm -rf .seed
 
 echo
 echo "== done  ·  ${OS_NAME[$BASE]}  ·  $EDITION edition =="
-echo "  disk:  $(pwd)/$DISK"
-echo "  seed:  $(pwd)/$SEED"
-echo "  next:  ./launch.sh   (QEMU+KVM)   or   ./export-vbox.sh (VirtualBox)   — both use your last build ($BASE/$EDITION)"
-echo "  login: darknode / darknode   ($([ "$EDITION" = netinstall ] && echo 'terminal only — boots to a console' || echo 'first boot installs the Darknode desktop + tools'))"
-echo "  other editions:  ./build.sh $BASE {netinstall|slim|full}"
+echo "  disk:   $(pwd)/$DISK"
+echo "  seed:   $(pwd)/$SEED"
+echo "  launch: ./launch.sh          boot this build in QEMU/KVM"
+echo "          ./export-vbox.sh     export the same disk to VirtualBox"
+echo "  login:  darknode / darknode"
+if [ "$EDITION" = netinstall ]; then
+  echo "          terminal only — boots to a console"
+else
+  echo "          first boot installs the Darknode desktop + tools"
+fi
+echo "  rebuild other editions:  ./build.sh $BASE {netinstall|slim|full}"
