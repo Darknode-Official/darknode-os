@@ -1,7 +1,19 @@
 #!/usr/bin/env bash
-# darknode-ask — turn a natural-language request into a shell command and optionally run it
-# Natural-language → shell command, then optionally run it. Uses the Darknode AI engine.
+# darknode-ask — turn a plain-English request into one shell command, then confirm to run it.
+# Uses the local Darknode AI engine (darknode-ai). Nothing runs until you answer y.
 set -uo pipefail
+
+case "${1:-}" in
+  -h|--help)
+    echo "Usage: darknode-ask <request>"
+    echo
+    echo "Turn a plain-English request into one shell command, then confirm to run it."
+    echo "With no request, you are prompted for one. Nothing runs until you answer y."
+    echo
+    echo "Example: darknode-ask scan the local subnet for open web ports"
+    exit 0 ;;
+esac
+
 Q="$*"; [ -n "$Q" ] || read -rp "What do you want to do? " Q
 CMD="$(darknode-ai -q -s 'Convert the request into ONE safe shell command for a Debian pentest box. Output ONLY the command — no prose, no backticks, no explanation.' "$Q" | grep -m1 . | sed 's/^`*//;s/`*$//')"
 [ -n "$CMD" ] && [ "$CMD" != "null" ] || { echo "no suggestion"; exit 1; }

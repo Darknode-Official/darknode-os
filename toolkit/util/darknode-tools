@@ -2,7 +2,7 @@
 # darknode-tools — discover, search, and launch the Darknode custom toolkit
 #   darknode-tools               overview: tool counts by category
 #   darknode-tools list          list every Darknode tool with a one-line description
-#   darknode-tools <category>    list one category (recon exploit post defense util)
+#   darknode-tools <category>    list one category (recon|exploit|post|defense|util)
 #   darknode-tools search <q>    fuzzy-search names and descriptions
 #   darknode-tools info <tool>   show a tool's description + install status
 #   darknode-tools run <tool> …  run a tool by name (passes remaining args)
@@ -140,7 +140,7 @@ _installed(){ command -v "$1" >/dev/null 2>&1; }
 cmd_overview(){
   echo ""
   c "  Darknode Toolkit"; printf '\n'
-  dim "  Custom AI-orchestrated security tools — try 'darknode-tools list'"; printf '\n\n'
+  dim "  Custom security tools across recon, exploitation, and defense."; printf '\n\n'
   local total=0 present=0
   for cat in "${CATS[@]}"; do
     local n=0 p=0
@@ -150,7 +150,7 @@ cmd_overview(){
       n=$((n+1)); total=$((total+1))
       if _installed "$name"; then p=$((p+1)); present=$((present+1)); fi
     done
-    printf "    \e[1;36m%-22s\e[0m %s tools\n" "$(_catlabel "$cat")" "$n"
+    printf "    \e[1;36m%-22s\e[0m %2s tools\n" "$(_catlabel "$cat")" "$n"
   done
   echo ""
   printf "    %s tools total" "$(g "$total")"

@@ -35,8 +35,8 @@ cat /etc/banner 2>/dev/null
 if grep -q 'darknode.selftest' /proc/cmdline 2>/dev/null; then
   echo "=== DARKNODE OS SELF-TEST ==="
   /usr/bin/darknode
-  echo "--- processes ---"; ps
-  echo "--- mounts ---"; mount
+  echo "=== PROCESSES ==="; ps
+  echo "=== MOUNTS ==="; mount
   echo "=== SELF-TEST OK: userspace is live on $(uname -sr) ==="
   sleep 1
   poweroff -f
